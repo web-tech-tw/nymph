@@ -1,0 +1,20 @@
+{
+    "name": "discord-manager",
+    "version": "1.0.0",
+    "description": "Node.js on Docker",
+    "author": "Taiwan Web Technology Promotion Organization",
+    "license": "MIT",
+    "main": "app.js",
+    "scripts": {
+        "dev": "nodemon app.js",
+        "start": "node app.js"
+    },
+    "dependencies": {
+        "dotenv": "^10.0.0",
+        "express": "^4.16.1",
+        "jsonwebtoken": "^8.5.1"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.13"
+    }
+}
