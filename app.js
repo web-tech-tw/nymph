@@ -7,23 +7,16 @@ const client = new Client({ intents: [
 	Intents.FLAGS.DIRECT_MESSAGES
 ] });
 
+const triggers = {
+	MessageCreate: require('./message/index.js'),
+	InteractionCreate: require('./interaction/index.js')
+}
+
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 });
 
-client.on('messageCreate', (message) => {
-	if (message.author.bot) return false; 
-	
-	console.log(`Message from ${message.author.username}: ${message.content}`);
-	message.author.send("Hi")
-})
-
-client.on('interactionCreate', async (interaction) => {
-	if (!interaction.isCommand()) return;
-
-	if (interaction.commandName === 'ping') {
-		await interaction.reply('Pong!');
-	}
-});
+client.on('messageCreate', triggers.MessageCreate);
+client.on('interactionCreate', triggers.InteractionCreate);
 
 client.login(process.env.DISCORD_TOKEN);
