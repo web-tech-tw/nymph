@@ -6,6 +6,7 @@
     "license": "MIT",
     "main": "app.js",
     "scripts": {
+        "register-commands": "node register_commands.js",
         "dev": "nodemon app.js",
         "start": "node app.js"
     },
