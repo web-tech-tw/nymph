@@ -5,6 +5,9 @@ const simple_commands = {
 	clear: async (_, message) => {
 		const messages = await message.channel.messages.fetch()
 		messages.map((message) => message.delete())
+	},
+	abc: (_, message) => {
+		message.channel.send("Hi")
 	}
 }
 

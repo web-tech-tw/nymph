@@ -29,15 +29,15 @@ const database = MySQL.createConnection({
 const triggers = {
 	MessageCreate: require('./message/index.js'),
 	InteractionCreate: require('./interaction/index.js')
-}
+};
 
 const state = {
 	client,
 	database
-}
+};
 
 for (const key in triggers) {
-	triggers[key] = (...args) => triggers[key](state, ...args)
+	triggers[key] = (...args) => triggers[key](state, ...args);
 }
 
 client.on('ready', () => {
