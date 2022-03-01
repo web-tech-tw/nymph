@@ -1,3 +1,5 @@
+'use strict'
+
 const simple_commands = {
 	user_id: (_, message) => {
 		message.channel.send(message.author.tag);

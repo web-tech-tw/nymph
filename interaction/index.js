@@ -1,3 +1,5 @@
+'use strict'
+
 module.exports = async () => {
     if (!interaction.isCommand()) return;
 
