@@ -4,6 +4,7 @@ const {
 	Client,
 	Intents
 } = require('discord.js');
+const MySQL = require('mysql2');
 
 const client = new Client({
 	partials: [
@@ -17,10 +18,26 @@ const client = new Client({
 		Intents.FLAGS.DIRECT_MESSAGE_TYPING
 	]
 });
+const database = MySQL.createConnection({
+	host: process.env.MYSQL_HOST,
+	port: process.env.MYSQL_PORT,
+	database: process.env.MYSQL_NAME,
+	user: process.env.MYSQL_USERNAME,
+	password: process.env.MYSQL_PASSWORD
+});
 
 const triggers = {
 	MessageCreate: require('./message/index.js'),
 	InteractionCreate: require('./interaction/index.js')
+}
+
+const state = {
+	client,
+	database
+}
+
+for (const key in triggers) {
+	triggers[key] = (...args) => triggers[key](state, ...args)
 }
 
 client.on('ready', () => {
