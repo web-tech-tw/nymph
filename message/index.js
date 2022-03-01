@@ -6,8 +6,17 @@ const simple_commands = {
 		const messages = await message.channel.messages.fetch()
 		messages.map((message) => message.delete())
 	},
-	abc: (_, message) => {
-		message.channel.send("Hi")
+	show_roles: (state, message) => {
+		state.database.query(
+			'SELECT * FROM `roles` WHERE `allow_assign` = TRUE',
+			function (err, results) {
+				if (err) {
+					message.channel.send(JSON.stringify(err))
+					return
+				}
+				message.channel.send(JSON.stringify(results))
+			}
+		);
 	}
 }
 
