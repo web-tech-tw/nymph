@@ -36,8 +36,8 @@ const state = {
 	database
 };
 
-for (const key in triggers) {
-	triggers[key] = (...args) => triggers[key](state, ...args);
+for (const [key, item] of Object.entries(triggers)) {
+	triggers[key] = (...args) => item(state, ...args);
 }
 
 client.on('ready', () => {
