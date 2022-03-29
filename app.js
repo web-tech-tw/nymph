@@ -1,9 +1,8 @@
+'use strict'
+
 require('dotenv').config()
 
-const {
-	Client,
-	Intents
-} = require('discord.js');
+const {Client, Intents} = require('discord.js');
 const MySQL = require('mysql2');
 
 const client = new Client({
@@ -26,14 +25,13 @@ const database = MySQL.createConnection({
 	password: process.env.MYSQL_PASSWORD
 });
 
+const isSecurity = (message) => message.member.roles.cache.some(role => role.name === 'security');
+
+const state = {client, database, isSecurity};
+
 const triggers = {
 	MessageCreate: require('./message/index.js'),
 	InteractionCreate: require('./interaction/index.js')
-};
-
-const state = {
-	client,
-	database
 };
 
 for (const [key, item] of Object.entries(triggers)) {
