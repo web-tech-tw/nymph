@@ -1,4 +1,6 @@
-module.exports = async () => {
+'use strict'
+
+module.exports = async (state, interaction) => {
     if (!interaction.isCommand()) return;
 
     if (interaction.commandName === 'ping') {
