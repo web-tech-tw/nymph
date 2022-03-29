@@ -45,4 +45,4 @@ client.on('ready', () => {
 client.on('messageCreate', triggers.MessageCreate);
 client.on('interactionCreate', triggers.InteractionCreate);
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_BOT_TOKEN);
