@@ -33,10 +33,7 @@ const triggers = {
 	InteractionCreate: require('./interaction/index.js')
 };
 
-const state = {
-	client,
-	database
-};
+const state = {client, database};
 
 for (const [key, item] of Object.entries(triggers)) {
 	triggers[key] = (...args) => item(state, ...args);

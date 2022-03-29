@@ -1,12 +1,15 @@
 'use strict'
 
+const is_security = (message) => message.member.roles.cache.some(role => role.name === 'security')
+
 const simple_commands = {
 	user_id: (_, message) => {
 		message.channel.send(message.author.tag);
 	},
 	clear: async (_, message) => {
+		if (!is_security(message)) return;
 		const messages = await message.channel.messages.fetch();
-		messages.forEach(async (item) => item.delete());
+		messages.forEach((item) => item.delete());
 	},
 	show_roles: (state, message) => {
 		state.database.query(
