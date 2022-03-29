@@ -17,7 +17,7 @@ module.exports = (state, message) => {
 		return false;
 	};
 	if (state.simpleCommandExecutor({
-		user_id: (_, message) => {
+		"user_id": (_, message) => {
 			message.channel.send(`${message.author.tag}\n\`${message.author.id}\``);
 		},
 	})) return;
