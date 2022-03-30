@@ -30,19 +30,15 @@ const isSecurity = (message) => message.member.roles.cache.some(role => role.nam
 const state = {client, database, isSecurity};
 
 const triggers = {
-	MessageCreate: require('./message/index.js'),
-	InteractionCreate: require('./interaction/index.js')
+	interactionCreate: require('./triggers/interaction/index.js')
 };
 
 for (const [key, item] of Object.entries(triggers)) {
-	triggers[key] = (...args) => item(state, ...args);
+	client.on(key, (...args) => item(state, ...args));
 }
 
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 });
-
-client.on('messageCreate', triggers.MessageCreate);
-client.on('interactionCreate', triggers.InteractionCreate);
 
 client.login(process.env.DISCORD_BOT_TOKEN);
