@@ -3,7 +3,6 @@
 require('dotenv').config()
 
 const {Client, Intents} = require('discord.js');
-const MySQL = require('mysql2');
 
 const client = new Client({
 	partials: [
@@ -17,17 +16,10 @@ const client = new Client({
 		Intents.FLAGS.DIRECT_MESSAGE_TYPING
 	]
 });
-const database = MySQL.createConnection({
-	host: process.env.MYSQL_HOST,
-	port: process.env.MYSQL_PORT,
-	database: process.env.MYSQL_NAME,
-	user: process.env.MYSQL_USERNAME,
-	password: process.env.MYSQL_PASSWORD
-});
 
 const isSecurity = (message) => message.member.roles.cache.some(role => role.name === 'security');
 
-const state = {client, database, isSecurity};
+const state = {client, isSecurity};
 
 const triggers = {
 	interactionCreate: require('./triggers/interaction/index.js')
