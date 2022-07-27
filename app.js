@@ -2,11 +2,16 @@
 
 require('dotenv').config()
 
-const {Client, Intents} = require('discord.js');
+const { Client, Intents } = require('discord.js');
+const { ReactionRole } = require("discordjs-reaction-role");
+
+const roles = require('./roles.json');
 
 const client = new Client({
 	partials: [
-		"CHANNEL"
+		"CHANNEL",
+		"MESSAGE",
+		"REACTION",
 	],
 	intents: [
 		Intents.FLAGS.GUILDS,
@@ -16,10 +21,17 @@ const client = new Client({
 		Intents.FLAGS.DIRECT_MESSAGE_TYPING
 	]
 });
+const roleManager = new ReactionRole(client, roles);
 
-const isSecurity = (message) => message.member.roles.cache.some(role => role.name === 'security');
+const isSecurity = (message) => message.member.roles.cache.some(
+	(role) => role.name === 'security'
+);
 
-const state = {client, isSecurity};
+const state = {
+	client,
+	roleManager,
+	isSecurity,
+};
 
 const triggers = {
 	interactionCreate: require('./triggers/interaction/index.js')
@@ -31,6 +43,10 @@ for (const [key, item] of Object.entries(triggers)) {
 
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
+});
+
+client.on('messageReactionAdd', (reaction, user) => {
+	console.log(reaction, user);
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
