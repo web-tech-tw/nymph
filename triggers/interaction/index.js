@@ -1,10 +1,10 @@
 'use strict'
 
 const commands = {
-    "ping": (state, interaction) => {
+    "ping": (_, interaction) => {
         interaction.reply('Pong!');
     },
-    "user_id": (state, interaction) => {
+    "user_id": (_, interaction) => {
         interaction.reply(`${interaction.user.tag}\n\`${interaction.user.id}\``)
     },
     "clear": async (state, interaction) => {
