@@ -1,4 +1,4 @@
-# discord-manager
+# nymph
 
 - [ ] user link
 - [ ] roles assign
