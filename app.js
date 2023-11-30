@@ -2,24 +2,32 @@
 
 require('dotenv').config()
 
-const { Client, Intents } = require('discord.js');
+const {
+    Client,
+    Partials,
+    GatewayIntentBits,
+    PresenceUpdateStatus,
+    ActivityType,
+} = require('discord.js');
 const { ReactionRole } = require("discordjs-reaction-role");
 
 const roles = require('./roles.json');
 
 const client = new Client({
-	partials: [
-		"CHANNEL",
-		"MESSAGE",
-		"REACTION",
-	],
-	intents: [
-		Intents.FLAGS.GUILDS,
-		Intents.FLAGS.GUILD_MESSAGES,
-		Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-		Intents.FLAGS.DIRECT_MESSAGES,
-		Intents.FLAGS.DIRECT_MESSAGE_TYPING
-	]
+    partials: [
+        Partials.Channel,
+        Partials.Message,
+        Partials.Reaction,
+    ],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.DirectMessageTyping,
+        GatewayIntentBits.MessageContent,
+    ],
 });
 const roleManager = new ReactionRole(client, roles);
 
@@ -43,6 +51,13 @@ for (const [key, item] of Object.entries(triggers)) {
 
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
+    client.user.setPresence({
+        status: PresenceUpdateStatus.Online,
+        activities: [{
+            type: ActivityType.Playing,
+            name: "黑客帝國",
+        }],
+    });
 });
 
 client.on('messageReactionAdd', (reaction, user) => {
