@@ -1,25 +1,45 @@
 {
-    "name": "discord-manager",
-    "version": "1.0.0",
-    "description": "Node.js on Docker",
-    "author": "Taiwan Web Technology Promotion Organization",
-    "license": "MIT",
-    "main": "app.js",
-    "scripts": {
-        "register-commands": "node register_commands.js",
-        "dev": "nodemon app.js",
-        "start": "node app.js"
-    },
-    "dependencies": {
-        "@discordjs/rest": "^2.2.0",
-        "discord-api-types": "^0.37.65",
-        "discord.js": "^14.14.1",
-        "discordjs-reaction-role": "^3.1.0",
-        "dotenv": "^16.3.1",
-        "express": "^4.18.2",
-        "jsonwebtoken": "^9.0.2"
-    },
-    "devDependencies": {
-        "nodemon": "^3.0.1"
+  "name": "nymph",
+  "version": "1.0.0",
+  "description": "Automate resource management tasks, monitor activity, and provide support with this AI-powered bot.",
+  "author": "Taiwan Web Technology Promotion Organization",
+  "license": "MIT",
+  "main": "app.js",
+  "scripts": {
+    "register-commands": "node register_commands.js",
+    "dev": "nodemon app.js",
+    "start": "node app.js",
+    "lint": "npx lint-staged",
+    "lint:es": "eslint \"*.js\" \"src/**/*.js\"",
+    "lint:es:fix": "eslint \"*.js\" \"src/**/*.js\" --fix",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.js": "eslint"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.2.0",
+    "@google/generative-ai": "^0.2.1",
+    "discord-api-types": "^0.37.65",
+    "discord.js": "^14.14.1",
+    "discordjs-reaction-role": "^3.1.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.6.5",
+    "@commitlint/config-conventional": "^17.6.5",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^8.41.0",
+    "eslint-config-google": "^0.14.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.2",
+    "nodemon": "^2.0.22"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
     }
+  }
 }
