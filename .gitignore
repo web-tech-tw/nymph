@@ -1,8 +1,15 @@
-.DS_Store
-node_modules
-/dist
-roles.json
+# App config files
 .env
+prompts.json
+roles.json
+
+# Finder config file
+.DS_Store
+
+# Directories
+node_modules
+ssl_keys
+dist
 
 # Log files
 npm-debug.log*
@@ -11,6 +18,8 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Editor directories and files
+coverage
+.nyc_output
 .idea
 .vscode
 *.suo
