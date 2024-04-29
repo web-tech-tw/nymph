@@ -1,6 +1,5 @@
 "use strict";
 
-// eslint-disable-next-line no-unused-vars
 const discord = require("discord.js");
 
 const snakeToCamelCase = (str) =>

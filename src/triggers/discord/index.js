@@ -1,13 +1,13 @@
 "use strict";
 
-const {useClient} = require("../core/discord.js");
+const {useClient} = require("../../clients/discord.js");
 
 const client = useClient();
 
 exports.startListen = () => {
     const triggers = {
-        interactionCreate: require("./interaction_create/index.js"),
-        messageCreate: require("./message_create/index.js"),
+        interactionCreate: require("./interaction_create"),
+        messageCreate: require("./message_create"),
     };
     for (const [key, trigger] of Object.entries(triggers)) {
         client.on(key, trigger);
