@@ -10,36 +10,34 @@ const {
 
 const {
     useClient,
-} = require("./src/core/discord");
+} = require("./src/clients/discord");
 
-const triggerManager = require("./src/triggers");
-const taskManager = require("./src/tasks");
+const {
+    startListen,
+} = require("./src/triggers/discord");
 
 const client = useClient();
-
-const showStartupMessage = async () => {
-    console.info(
-        "Nymph 系統 已啟動",
-        `身份：${client.user.tag}`,
-    );
-};
-
-const setupStatusMessage = async () => {
-    client.user.setPresence({
-        status: PresenceUpdateStatus.Online,
-        activities: [{
-            type: ActivityType.Playing,
-            name: "黑客帝國",
-        }],
-    });
-};
-
 client.on(Events.ClientReady, () => {
+    const showStartupMessage = async () => {
+        console.info(
+            "Nymph 系統 已啟動",
+            `身份：${client.user.tag}`,
+        );
+    };
+
+    const setupStatusMessage = async () => {
+        client.user.setPresence({
+            status: PresenceUpdateStatus.Online,
+            activities: [{
+                type: ActivityType.Playing,
+                name: "黑客帝國",
+            }],
+        });
+    };
+
     showStartupMessage();
     setupStatusMessage();
-
-    triggerManager.startListen();
-    taskManager.startJobs();
+    startListen();
 
     setInterval(
         setupStatusMessage,

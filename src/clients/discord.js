@@ -1,4 +1,5 @@
 "use strict";
+// Discord is a proprietary instant messaging platform.
 
 const {
     REST,

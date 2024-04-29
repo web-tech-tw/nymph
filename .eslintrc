@@ -1,26 +1,29 @@
 {
-    "extends": [
-      "eslint:recommended",
-      "google"
+  "plugins": [
+    "jsdoc"
+  ],
+  "extends": [
+    "eslint:recommended",
+    "google"
+  ],
+  "rules": {
+    "jsdoc/no-undefined-types": 1,
+    "linebreak-style": 1,
+    "indent": [
+      "error",
+      4
     ],
-    "rules": {
-      "linebreak-style": 1,
-      "indent": [
-        "error",
-        4
-      ],
-      "quotes": [
-        "error",
-        "double"
-      ]
-    },
-    "env": {
-      "es6": true,
-      "node": true,
-      "browser": false
-    },
-    "parserOptions": {
-      "ecmaVersion": 2021
-    }
+    "quotes": [
+      "error",
+      "double"
+    ]
+  },
+  "env": {
+    "es6": true,
+    "node": true,
+    "browser": false
+  },
+  "parserOptions": {
+    "ecmaVersion": 2021
   }
-  
+}

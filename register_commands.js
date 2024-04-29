@@ -2,13 +2,13 @@
 
 require("dotenv").config();
 
-const {useRestClient} = require("./src/core/discord");
+const {useRestClient} = require("./src/clients/discord");
 const {Routes} = require("discord-api-types/v9");
 
 const client = useRestClient();
 
 const modules = {
-    ...require("./src/triggers/interaction_create/terminal"),
+    ...require("./src/triggers/discord/interaction_create/terminal"),
 };
 
 const camelToSnakeCase = (str) =>
