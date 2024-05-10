@@ -11,7 +11,7 @@ const {
     GatewayIntentBits,
 } = require("discord.js");
 
-exports.useClient = () => {
+const newClient = () => {
     const client = new Client({
         partials: [
             Partials.Channel,
@@ -29,6 +29,21 @@ exports.useClient = () => {
         ],
     });
     client.login(process.env.DISCORD_BOT_TOKEN);
+    return client;
+};
+
+let client;
+/**
+ * Use Discord client
+ *
+ * @param {boolean} cached - Use the cached client
+ * @return {Client} - The client
+ */
+exports.useClient = (cached = true) => {
+    if (cached && client) {
+        return client;
+    }
+    client = newClient();
     return client;
 };
 

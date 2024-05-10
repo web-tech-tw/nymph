@@ -1,6 +1,7 @@
 # App config files
 .env
 prompts.json
+relay.json
 roles.json
 
 # Finder config file
