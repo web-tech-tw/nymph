@@ -2,45 +2,19 @@
 
 require("dotenv").config();
 
-const {
-    ActivityType,
-    Events,
-    PresenceUpdateStatus,
-} = require("discord.js");
+const runners = [];
 
-const {
-    useClient,
-} = require("./src/clients/discord");
+if (process.env.MATRIX_ACCESS_TOKEN) {
+    runners.push(require("./src/matrix"));
+}
+if (process.env.DISCORD_BOT_TOKEN) {
+    runners.push(require("./src/discord"));
+}
 
-const {
-    startListen,
-} = require("./src/triggers/discord");
-
-const client = useClient();
-client.on(Events.ClientReady, () => {
-    const showStartupMessage = async () => {
-        console.info(
-            "Nymph 系統 已啟動",
-            `身份：${client.user.tag}`,
-        );
-    };
-
-    const setupStatusMessage = async () => {
-        client.user.setPresence({
-            status: PresenceUpdateStatus.Online,
-            activities: [{
-                type: ActivityType.Playing,
-                name: "黑客帝國",
-            }],
-        });
-    };
-
-    showStartupMessage();
-    setupStatusMessage();
-    startListen();
-
-    setInterval(
-        setupStatusMessage,
-        (86400 - 3600) * 1000,
-    );
+Promise.all(runners.map(
+    (runner) => runner(),
+)).then(() => {
+    console.info("Nymph 系統 成功啟動");
+}).catch((e) => {
+    console.error("Nymph 系統 啟動失敗：", e);
 });

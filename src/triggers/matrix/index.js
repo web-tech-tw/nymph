@@ -1,15 +1,18 @@
 "use strict";
 
 const {
+    RoomEvent,
+} = require("matrix-js-sdk");
+
+const {
     useClient,
-} = require("../../clients/discord");
+} = require("../../clients/matrix");
 
 exports.startListen = () => {
     const client = useClient();
 
     const triggers = {
-        interactionCreate: require("./interaction_create"),
-        messageCreate: require("./message_create"),
+        [RoomEvent.Timeline]: require("./room/timeline"),
     };
     for (const [key, trigger] of Object.entries(triggers)) {
         client.on(key, trigger);
