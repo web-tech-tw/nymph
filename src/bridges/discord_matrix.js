@@ -25,9 +25,14 @@ const client = useClient();
  */
 module.exports = async (message) => {
     const {channelId} = message;
+
+    const relayTarget = find("discordChannelId", channelId);
+    if (!relayTarget) {
+        return;
+    }
     const {
         matrixRoomId: roomId,
-    } = find("discordChannelId", channelId);
+    } = relayTarget;
 
     const {username} = message.author;
     const {content: text} = message;

@@ -26,9 +26,14 @@ const client = useClient();
  */
 module.exports = async (roomEvent, room, _toStartOfTimeline) => {
     const {roomId} = room;
+
+    const relayTarget = find("matrixRoomId", roomId);
+    if (!relayTarget) {
+        return;
+    }
     const {
         discordChannelId: channelId,
-    } = find("matrixRoomId", roomId);
+    } = relayTarget;
 
     const {sender: username} = roomEvent.event;
     const {body: text} = roomEvent.event.content;
