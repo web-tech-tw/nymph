@@ -1,9 +1,10 @@
 "use strict";
 // Gemini is a generative AI model developed by Google.
 
+const {getMust} = require("../config");
 const {GoogleGenerativeAI} = require("@google/generative-ai");
 
-const client = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+const client = new GoogleGenerativeAI(getMust("GOOGLE_AI_API_KEY"));
 const model = client.getGenerativeModel({model: "gemini-pro"});
 
 const chatSessions = {};

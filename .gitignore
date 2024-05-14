@@ -4,6 +4,9 @@ prompts.json
 relay.json
 roles.json
 
+# App data files
+data/
+
 # Finder config file
 .DS_Store
 

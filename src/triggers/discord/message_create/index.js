@@ -2,14 +2,16 @@
 
 const discord = require("discord.js");
 
+const {
+    useClient,
+} = require("../../../clients/discord");
+const {
+    usePrompts,
+} = require("../../../clients/gemini");
+
 const discordToMatrix = require("../../../bridges/discord_matrix");
 
-const {useClient} = require("../../../clients/discord");
-const {usePrompts} = require("../../../clients/gemini");
-
 const prompts = require("../../../../prompts.json");
-
-const client = useClient();
 const useChatSession = usePrompts(prompts);
 
 /**
@@ -17,16 +19,15 @@ const useChatSession = usePrompts(prompts);
  * @return {void}
  */
 module.exports = async (message) => {
+    const client = await useClient();
+
     if (message.author.bot) {
         return;
     }
 
     discordToMatrix(message);
 
-    if (
-        message.channel.id !== process.env.CHANNEL_ID_TERMINAL &&
-        !message.mentions.users.has(client.user.id)
-    ) {
+    if (!message.mentions.users.has(client.user.id)) {
         return;
     }
 

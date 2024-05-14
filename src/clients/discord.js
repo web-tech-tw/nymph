@@ -2,6 +2,10 @@
 // Discord is a proprietary instant messaging platform.
 
 const {
+    getMust,
+} = require("../config");
+
+const {
     REST,
 } = require("@discordjs/rest");
 
@@ -11,7 +15,9 @@ const {
     GatewayIntentBits,
 } = require("discord.js");
 
-const newClient = () => {
+const botToken = getMust("DISCORD_BOT_TOKEN");
+
+const newClient = async () => {
     const client = new Client({
         partials: [
             Partials.Channel,
@@ -28,10 +34,14 @@ const newClient = () => {
             GatewayIntentBits.MessageContent,
         ],
     });
-    client.login(process.env.DISCORD_BOT_TOKEN);
+    client.login(botToken);
     return client;
 };
 
+/**
+ * The cached client.
+ * @type {Client|undefined}
+ */
 let client;
 /**
  * Use Discord client
@@ -39,17 +49,17 @@ let client;
  * @param {boolean} cached - Use the cached client
  * @return {Client} - The client
  */
-exports.useClient = (cached = true) => {
+exports.useClient = async (cached = true) => {
     if (cached && client) {
         return client;
     }
-    client = newClient();
+    client = await newClient();
     return client;
 };
 
 exports.useRestClient = () => {
     const restClient = new REST({version: "10"});
-    restClient.setToken(process.env.DISCORD_BOT_TOKEN);
+    restClient.setToken(botToken);
     return restClient;
 };
 
