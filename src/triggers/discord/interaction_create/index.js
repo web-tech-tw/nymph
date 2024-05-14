@@ -17,10 +17,7 @@ const snakeToCamelCase = (str) =>
 module.exports = async (interaction) => {
     if (!interaction.isCommand()) return;
 
-    let commands = {};
-    if (interaction.channel.id === process.env.CHANNEL_ID_TERMINAL) {
-        commands = {...commands, ...require("./terminal")};
-    }
+    const commands = require("./commands");
 
     const actionName = snakeToCamelCase(interaction.commandName);
     if (actionName in commands) {

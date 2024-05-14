@@ -1,6 +1,8 @@
 "use strict";
 
-require("dotenv").config();
+const {
+    getMust,
+} = require("./src/config");
 
 const {useRestClient} = require("./src/clients/discord");
 const {Routes} = require("discord-api-types/v9");
@@ -30,8 +32,8 @@ console.info(commands);
 
         await client.put(
             Routes.applicationGuildCommands(
-                process.env.DISCORD_APP_ID,
-                process.env.GUILD_ID,
+                getMust("DISCORD_APP_ID"),
+                getMust("DISCORD_GUILD_ID"),
             ),
             {body: commands},
         );

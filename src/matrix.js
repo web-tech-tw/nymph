@@ -2,6 +2,7 @@
 
 const {
     useClient,
+    startSync,
 } = require("./clients/matrix");
 
 const {
@@ -9,14 +10,14 @@ const {
 } = require("./triggers/matrix");
 
 module.exports = async () => {
-    const client = useClient();
-    await client.startClient({initialSyncLimit: 0});
+    const client = await useClient();
 
-    const showStartupMessage = () => {
-        const userId = client.getUserId();
+    const showStartupMessage = async () => {
+        const userId = await client.getUserId();
         console.info(`Matrix 身份：${userId}`);
     };
 
-    showStartupMessage();
-    startListen();
+    await showStartupMessage();
+    await startListen();
+    await startSync();
 };

@@ -20,13 +20,15 @@
   "dependencies": {
     "@discordjs/rest": "^2.2.0",
     "@google/generative-ai": "^0.2.1",
+    "@matrix-org/matrix-sdk-crypto-nodejs": "^0.1.0-beta.12",
     "discord-api-types": "^0.37.65",
     "discord.js": "^14.14.1",
     "discordjs-reaction-role": "^3.1.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "matrix-js-sdk": "^32.1.0"
+    "matrix-bot-sdk": "^0.7.1",
+    "mongoose": "^8.3.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.6.5",

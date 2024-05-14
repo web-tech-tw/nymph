@@ -4,18 +4,12 @@
 const discord = require("discord.js");
 
 const {
-    MsgType,
-} = require("matrix-js-sdk");
-
-const {
     useClient,
 } = require("../clients/matrix");
 
 const {
     find,
 } = require("./utils");
-
-const client = useClient();
 
 /**
  * This function is called when a message is created in Discord.
@@ -24,6 +18,8 @@ const client = useClient();
  * @return {void}
  */
 module.exports = async (message) => {
+    const client = await useClient();
+
     const {channelId} = message;
 
     const relayTarget = find("discordChannelId", channelId);
@@ -38,7 +34,7 @@ module.exports = async (message) => {
     const {content: text} = message;
 
     await client.sendMessage(roomId, {
-        msgtype: MsgType.Text,
+        msgtype: "m.text",
         format: "plain/text",
         body: `${username} ⬗ Discord\n${text}`,
     });

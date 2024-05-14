@@ -4,8 +4,8 @@ const {
     useClient,
 } = require("../../clients/discord");
 
-exports.startListen = () => {
-    const client = useClient();
+exports.startListen = async () => {
+    const client = await useClient();
 
     const triggers = {
         interactionCreate: require("./interaction_create"),

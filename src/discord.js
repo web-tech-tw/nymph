@@ -15,7 +15,7 @@ const {
 } = require("./triggers/discord");
 
 module.exports = async () => {
-    const client = useClient();
+    const client = await useClient();
 
     client.on(Events.ClientReady, () => {
         const showStartupMessage = async () => {

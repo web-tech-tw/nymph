@@ -1,18 +1,15 @@
 "use strict";
 
 const {
-    RoomEvent,
-} = require("matrix-js-sdk");
-
-const {
     useClient,
 } = require("../../clients/matrix");
 
-exports.startListen = () => {
-    const client = useClient();
+exports.startListen = async () => {
+    const client = await useClient();
 
     const triggers = {
-        [RoomEvent.Timeline]: require("./room/timeline"),
+        "room.failed_decryption": require("./room/failed_decryption"),
+        "room.message": require("./room/message"),
     };
     for (const [key, trigger] of Object.entries(triggers)) {
         client.on(key, trigger);
