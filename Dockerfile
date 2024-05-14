@@ -2,7 +2,7 @@ FROM node:18
 
 ENV RUNTIME_ENV container
 
-RUN adduser -u 3000 -D recv
+RUN useradd -u 3000 recv
 
 RUN mkdir -p /.npm /workplace
 WORKDIR /workplace
