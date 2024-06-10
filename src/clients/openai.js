@@ -47,11 +47,6 @@ async function chatWithAI(chatId, prompt) {
         },
     ];
 
-    // Debug
-    console.log(chatId);
-    console.log(prompt);
-    console.log(messages);
-
     const response = await client.chat.completions.create({
         model: chatModel,
         messages,
@@ -63,10 +58,6 @@ async function chatWithAI(chatId, prompt) {
         role: "assistant",
         content,
     });
-
-    // Debug
-    console.log(response);
-    console.log(content);
 
     return choice.message.content;
 }
