@@ -2,6 +2,8 @@
 
 const discord = require("discord.js");
 
+const {allCommands} = require("./commands");
+
 const snakeToCamelCase = (str) =>
     str.toLowerCase().replace(/([-_][a-z])/g, (group) =>
         group
@@ -17,11 +19,9 @@ const snakeToCamelCase = (str) =>
 module.exports = async (interaction) => {
     if (!interaction.isCommand()) return;
 
-    const commands = require("./commands");
-
     const actionName = snakeToCamelCase(interaction.commandName);
-    if (actionName in commands) {
-        commands[actionName].action(interaction);
+    if (actionName in allCommands) {
+        allCommands[actionName].action(interaction);
     } else {
         await interaction.reply("無法存取該指令");
     }

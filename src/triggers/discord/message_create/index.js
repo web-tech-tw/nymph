@@ -2,17 +2,10 @@
 
 const discord = require("discord.js");
 
-const {
-    useClient,
-} = require("../../../clients/discord");
-const {
-    usePrompts,
-} = require("../../../clients/gemini");
-
 const discordToMatrix = require("../../../bridges/discord_matrix");
 
-const prompts = require("../../../../prompts.json");
-const useChatSession = usePrompts(prompts);
+const {useClient} = require("../../../clients/discord");
+const {chatWithAI} = require("../../../clients/openai");
 
 /**
  * @param {discord.Message} message
@@ -39,17 +32,16 @@ module.exports = async (message) => {
         return;
     }
 
-    const chatSession = useChatSession(message.channel.id);
-    let result;
+    let responseContent;
     try {
-        result = await chatSession.sendMessage(requestContent);
+        responseContent = await chatWithAI(message.channel.id, requestContent);
     } catch (error) {
         console.error(error);
         message.reply("思緒混亂，無法回覆。");
         return;
     }
 
-    const responseContent = result.response.text().trim();
+    responseContent = responseContent.trim();
     if (!responseContent) {
         message.reply("無法正常回覆，請換個說法試試。");
         return;
