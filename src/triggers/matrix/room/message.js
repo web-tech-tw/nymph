@@ -3,11 +3,8 @@
 const matrixToDiscord = require("../../../bridges/matrix_discord");
 
 const {useClient} = require("../../../clients/matrix");
-const {usePrompts} = require("../../../clients/gemini");
+const {chatWithAI} = require("../../../clients/openai");
 
-const prompts = require("../../../../prompts.json");
-
-const useChatSession = usePrompts(prompts);
 const prefix = "Nymph ";
 
 /**
@@ -49,10 +46,9 @@ module.exports = async (roomId, event) => {
         return;
     }
 
-    const chatSession = useChatSession(roomId);
-    let result;
+    let responseContent;
     try {
-        result = await chatSession.sendMessage(requestContent);
+        responseContent = await chatWithAI(roomId, requestContent);
     } catch (error) {
         console.error(error);
         await client.sendMessage(roomId, {
@@ -63,7 +59,7 @@ module.exports = async (roomId, event) => {
         return;
     }
 
-    const responseContent = result.response.text().trim();
+    responseContent = responseContent.trim();
     if (!responseContent) {
         await client.sendMessage(roomId, {
             msgtype: "m.text",

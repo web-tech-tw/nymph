@@ -11,7 +11,7 @@ const {
 runLoader();
 
 const runners = [];
-if (getMust("MATRIX_ACCESS_TOKEN")) {
+if (getMust("MATRIX_USERNAME")) {
     runners.push(require("./src/matrix"));
 }
 if (getMust("DISCORD_BOT_TOKEN")) {
