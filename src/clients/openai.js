@@ -46,8 +46,8 @@ async function chatWithAI(chatId, prompt) {
     const response = await client.chat.completions.create({
         model: chatModel,
         messages: [
-            ...chatHistory,
             ...prependPrompts,
+            ...chatHistory,
             userPromptMessage,
         ],
     });
