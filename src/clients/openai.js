@@ -36,30 +36,39 @@ async function chatWithAI(chatId, prompt) {
     if (!chatHistoryMapper.has(chatId)) {
         chatHistoryMapper.set(chatId, []);
     }
-    const chatHistory = chatHistoryMapper.get(chatId);
 
-    const messages = [
-        ...chatHistory,
-        ...prependPrompts,
-        {
-            role: "user",
-            content: prompt,
-        },
-    ];
+    const chatHistory = chatHistoryMapper.get(chatId);
+    const userPromptMessage = {
+        role: "user",
+        content: prompt,
+    };
 
     const response = await client.chat.completions.create({
         model: chatModel,
-        messages,
+        messages: [
+            ...chatHistory,
+            ...prependPrompts,
+            userPromptMessage,
+        ],
     });
 
     const choice = choose(response.choices);
-    const content = choice.message.content;
-    chatHistory.push({
+    const reply = choice.message.content;
+    const assistantReplyMessage = {
         role: "assistant",
-        content,
-    });
+        content: reply,
+    };
 
-    return choice.message.content;
+    chatHistory.push(
+        userPromptMessage,
+        assistantReplyMessage,
+    );
+    if (chatHistory.length > 30) {
+        chatHistory.shift();
+        chatHistory.shift();
+    }
+
+    return reply;
 }
 
 exports.useClient = () => client;
