@@ -25,14 +25,17 @@ module.exports = async (event) => {
         text: messageText,
     } = message;
 
-    const sourceId = whereSentMessageEvent(event);
-
     let requestContent = messageText;
     if (sourceType !== "user" && !requestContent.startsWith(prefix)) {
         return;
     }
     if (requestContent.startsWith(prefix)) {
         requestContent = requestContent.slice(prefix.length).trim();
+    }
+
+    const sourceId = whereSentMessageEvent(event);
+    if (sourceType === "user") {
+        await client.showLoadingAnimation({chatId: sourceId});
     }
 
     if (!requestContent) {
