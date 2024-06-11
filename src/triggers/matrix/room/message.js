@@ -31,7 +31,6 @@ module.exports = async (roomId, event) => {
     matrixToDiscord(roomId, event);
 
     let requestContent = event.content.body;
-
     if (!requestContent.startsWith(prefix)) {
         return;
     }

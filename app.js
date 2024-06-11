@@ -3,19 +3,26 @@
 const {
     runLoader,
     getMust,
+    get,
 } = require("./src/config");
 const {
     prepare,
 } = require("./src/clients/database");
+const express = require("express");
 
 runLoader();
 
+const app = express();
+
 const runners = [];
-if (getMust("MATRIX_USERNAME")) {
-    runners.push(require("./src/matrix"));
+if (get("LINE_CHANNEL_SECRET")) {
+    app.use("/line", require("./src/line")());
 }
-if (getMust("DISCORD_BOT_TOKEN")) {
+if (get("DISCORD_BOT_TOKEN")) {
     runners.push(require("./src/discord"));
+}
+if (get("MATRIX_USERNAME")) {
+    runners.push(require("./src/matrix"));
 }
 
 (async () => {
@@ -28,3 +35,5 @@ if (getMust("DISCORD_BOT_TOKEN")) {
         console.error("Nymph 系統 啟動失敗：", e);
     });
 })();
+
+app.listen(getMust("HTTP_PORT"));
