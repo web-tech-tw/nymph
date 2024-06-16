@@ -71,5 +71,34 @@ async function chatWithAI(chatId, prompt) {
     return reply;
 }
 
+/**
+ * Slice the message content into multiple snippets.
+ * @param {string} content - The content to slice.
+ * @param {number} maxLength - The maximum length of each snippet.
+ * @param {string} separator - The separator to split the content.
+ * @return {Array<string>} The sliced snippets.
+ */
+function sliceContent(content, maxLength, separator="\n") {
+    const substrings = content.separator(separator);
+    const snippets = [];
+
+    let lastSnippet = "";
+    for (const text of substrings) {
+        if (!text) {
+            lastSnippet += separator;
+            continue;
+        }
+        if (text.length + lastSnippet.length < maxLength) {
+            lastSnippet += text;
+            continue;
+        }
+        snippets.push(lastSnippet);
+        lastSnippet = "";
+    }
+
+    return snippets;
+}
+
 exports.useClient = () => client;
 exports.chatWithAI = chatWithAI;
+exports.sliceContent = sliceContent;

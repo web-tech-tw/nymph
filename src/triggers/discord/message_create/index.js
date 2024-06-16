@@ -5,7 +5,7 @@ const discord = require("discord.js");
 const discordToMatrix = require("../../../bridges/discord_matrix");
 
 const {useClient} = require("../../../clients/discord");
-const {chatWithAI} = require("../../../clients/openai");
+const {chatWithAI, sliceContent} = require("../../../clients/openai");
 
 /**
  * @param {discord.Message} message
@@ -47,5 +47,13 @@ module.exports = async (message) => {
         return;
     }
 
-    message.reply(responseContent);
+    if (responseContent.length < 2000) {
+        message.reply(responseContent);
+    } else {
+        const snippets = sliceContent(responseContent, 2000);
+        message.reply(snippets.shift());
+        snippets.forEach((snippet) => {
+            message.channel.send(snippet);
+        });
+    }
 };
