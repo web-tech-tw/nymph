@@ -80,18 +80,18 @@ module.exports = async (event) => {
     }
 
     const snippets = sliceContent(responseContent, 5000);
-    const messages = [];
-    message.push({
+    const replyMessages = [];
+    replyMessages.push({
         type: "text",
         text: snippets.shift(),
         quoteToken,
     });
-    messages.push(...snippets.map((snippet) => ({
+    replyMessages.push(...snippets.map((snippet) => ({
         type: "text",
         text: snippet,
     })));
     await client.replyMessage({
         replyToken,
-        messages,
+        messages: replyMessages,
     });
 };
