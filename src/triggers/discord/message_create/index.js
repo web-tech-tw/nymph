@@ -47,13 +47,9 @@ module.exports = async (message) => {
         return;
     }
 
-    if (responseContent.length < 2000) {
-        message.reply(responseContent);
-    } else {
-        const snippets = sliceContent(responseContent, 2000);
-        message.reply(snippets.shift());
-        snippets.forEach((snippet) => {
-            message.channel.send(snippet);
-        });
-    }
+    const snippets = sliceContent(responseContent, 2000);
+    message.reply(snippets.shift());
+    snippets.forEach((snippet) => {
+        message.channel.send(snippet);
+    });
 };

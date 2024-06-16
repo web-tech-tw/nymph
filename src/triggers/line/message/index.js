@@ -1,7 +1,7 @@
 "use strict";
 
 const {useClient, whereSentMessageEvent} = require("../../../clients/line");
-const {chatWithAI} = require("../../../clients/openai");
+const {chatWithAI, sliceContent} = require("../../../clients/openai");
 
 const prefix = "Nymph ";
 
@@ -79,12 +79,19 @@ module.exports = async (event) => {
         return;
     }
 
+    const snippets = sliceContent(responseContent, 5000);
+    const messages = [];
+    message.push({
+        type: "text",
+        text: snippets.shift(),
+        quoteToken,
+    });
+    messages.push(...snippets.map((snippet) => ({
+        type: "text",
+        text: snippet,
+    })));
     await client.replyMessage({
         replyToken,
-        messages: [{
-            type: "text",
-            text: responseContent,
-            quoteToken,
-        }],
+        messages,
     });
 };

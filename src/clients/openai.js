@@ -79,7 +79,7 @@ async function chatWithAI(chatId, prompt) {
  * @return {Array<string>} The sliced snippets.
  */
 function sliceContent(content, maxLength, separator="\n") {
-    const substrings = content.separator(separator);
+    const substrings = content.split(separator);
     const snippets = [];
 
     let lastSnippet = "";
@@ -94,6 +94,9 @@ function sliceContent(content, maxLength, separator="\n") {
         }
         snippets.push(lastSnippet);
         lastSnippet = "";
+    }
+    if (lastSnippet) {
+        snippets.push(lastSnippet);
     }
 
     return snippets;
