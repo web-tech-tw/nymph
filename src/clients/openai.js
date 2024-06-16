@@ -92,11 +92,11 @@ function sliceContent(content, maxLength, separator="\n") {
             lastSnippet += text;
             continue;
         }
-        snippets.push(lastSnippet);
+        snippets.push(lastSnippet.trim());
         lastSnippet = "";
     }
     if (lastSnippet) {
-        snippets.push(lastSnippet);
+        snippets.push(lastSnippet.trim());
     }
 
     return snippets;
