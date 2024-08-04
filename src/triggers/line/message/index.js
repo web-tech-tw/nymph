@@ -1,7 +1,7 @@
 "use strict";
 
 const {useClient, whereSentMessageEvent} = require("../../../clients/line");
-const {chatWithAI, sliceContent} = require("../../../clients/openai");
+const {chatWithAI, sliceContent} = require("../../../clients/langchain");
 
 const prefix = "Nymph ";
 

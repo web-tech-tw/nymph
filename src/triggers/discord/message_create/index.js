@@ -5,7 +5,7 @@ const discord = require("discord.js");
 const discordToMatrix = require("../../../bridges/discord_matrix");
 
 const {useClient} = require("../../../clients/discord");
-const {chatWithAI, sliceContent} = require("../../../clients/openai");
+const {chatWithAI, sliceContent} = require("../../../clients/langchain");
 
 /**
  * @param {discord.Message} message

@@ -3,7 +3,7 @@
 const matrixToDiscord = require("../../../bridges/matrix_discord");
 
 const {useClient} = require("../../../clients/matrix");
-const {chatWithAI} = require("../../../clients/openai");
+const {chatWithAI} = require("../../../clients/langchain");
 
 const prefix = "Nymph ";
 

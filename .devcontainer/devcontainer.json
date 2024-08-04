@@ -1,5 +1,5 @@
 {
-	"name": "Node.js & Mongo DB",
+	"name": "nymph-dev",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",

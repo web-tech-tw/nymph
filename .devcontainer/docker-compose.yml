@@ -8,12 +8,22 @@ services:
     container_name: local-app
     volumes:
       - ../..:/workspaces:cached
+    networks:
+      - nymph-dev
     command: sleep infinity
-    network_mode: service:mongo
+
+  redis:
+    image: redis:latest
+    container_name: local-redis
+    networks:
+      - nymph-dev
+    restart: unless-stopped
 
   mongo:
     image: mongo:latest
     container_name: local-mongo
+    networks:
+      - nymph-dev
     restart: unless-stopped
 
   express:
@@ -24,4 +34,10 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: developer
       ME_CONFIG_BASICAUTH_PASSWORD: developer
       ME_CONFIG_MONGODB_SERVER: local-mongo
-    network_mode: service:mongo
+    networks:
+      - nymph-dev
+
+networks:
+  nymph-dev:
+    name: nymph-dev
+    driver: bridge
