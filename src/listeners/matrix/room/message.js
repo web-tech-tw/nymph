@@ -1,9 +1,16 @@
 "use strict";
 
-const matrixToDiscord = require("../../../bridges/matrix_discord");
-
 const {useClient} = require("../../../clients/matrix");
 const {chatWithAI} = require("../../../clients/langchain");
+
+const {
+    PLATFORM_MATRIX,
+} = require("../../../init/const");
+
+const {
+    relayText,
+    useSendText,
+} = require("../../../bridges");
 
 const prefix = "Nymph ";
 
@@ -16,32 +23,38 @@ const prefix = "Nymph ";
  */
 module.exports = async (roomId, event) => {
     const client = await useClient();
+    const clientId = await client.getUserId();
 
     const {
         event_id: eventId,
         sender: senderId,
     } = event;
 
-    if (senderId === await client.getUserId()) {
+    if (senderId === clientId) {
         return;
     }
 
     await client.sendReadReceipt(roomId, eventId);
 
-    matrixToDiscord(roomId, event);
-
     let requestContent = event.content.body;
+    relayText(
+        PLATFORM_MATRIX,
+        roomId,
+        requestContent,
+        senderId,
+    );
     if (!requestContent.startsWith(prefix)) {
         return;
     }
-    requestContent = requestContent.slice(prefix.length).trim();
 
+    const sendText = useSendText(
+        PLATFORM_MATRIX,
+        roomId,
+    );
+
+    requestContent = requestContent.slice(prefix.length).trim();
     if (!requestContent) {
-        await client.sendMessage(roomId, {
-            msgtype: "m.text",
-            format: "plain/text",
-            body: "所收到的訊息意圖不明。",
-        });
+        sendText("所收到的訊息意圖不明。");
         return;
     }
 
@@ -50,27 +63,15 @@ module.exports = async (roomId, event) => {
         responseContent = await chatWithAI(roomId, requestContent);
     } catch (error) {
         console.error(error);
-        await client.sendMessage(roomId, {
-            msgtype: "m.text",
-            format: "plain/text",
-            body: "思緒混亂，無法回覆。",
-        });
+        sendText("所收到的訊息意圖不明。");
         return;
     }
 
     responseContent = responseContent.trim();
     if (!responseContent) {
-        await client.sendMessage(roomId, {
-            msgtype: "m.text",
-            format: "plain/text",
-            body: "無法正常回覆，請換個說法試試。",
-        });
+        sendText("所收到的訊息意圖不明。");
         return;
     }
 
-    await client.sendMessage(roomId, {
-        msgtype: "m.text",
-        format: "plain/text",
-        body: responseContent,
-    });
+    sendText(responseContent);
 };

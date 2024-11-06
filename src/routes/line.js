@@ -1,19 +1,17 @@
 "use strict";
 
-const {
-    Router: createRouter,
-} = require("express");
+const {useApp, express} = require("../init/express");
 
 const {
-    useClient,
     useMiddleware,
-} = require("./clients/line");
+} = require("../clients/line");
 const {
     useDispatcher,
-} = require("./triggers/line");
+} = require("../listeners/line");
 
-const router = createRouter();
-const client = useClient();
+const {Router: newRouter} = express;
+const router = newRouter();
+
 const middleware = useMiddleware();
 const dispatcher = useDispatcher();
 
@@ -27,11 +25,9 @@ router.post("/webhook", middleware, (req, res) => {
 });
 
 module.exports = () => {
-    const showStartupMessage = async () => {
-        const {displayName, basicId} = await client.getBotInfo();
-        console.info(`LINE 身份：${displayName} (${basicId})`);
-    };
+    // Use application
+    const app = useApp();
 
-    showStartupMessage();
-    return router;
+    // Mount the router
+    app.use("/line", router);
 };

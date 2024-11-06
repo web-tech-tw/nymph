@@ -65,7 +65,7 @@ function get(key) {
  * @module config
  * @function
  * @param {string} key the key
- * @return {boolean} the bool value
+ * @return {bool} the bool value
  */
 function getEnabled(key) {
     return getMust(key) === "yes";
@@ -76,12 +76,13 @@ function getEnabled(key) {
  * @module config
  * @function
  * @param {string} key the key
- * @param {string} separator [separator=,] the separator.
- * @return {string[]} the array value
+ * @param {string} [separator=,] the separator.
+ * @return {array} the array value
  */
 function getSplited(key, separator=",") {
     return getMust(key).
         split(separator).
+        filter((s) => s).
         map((s) => s.trim());
 }
 

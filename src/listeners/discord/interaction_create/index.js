@@ -1,7 +1,5 @@
 "use strict";
 
-const discord = require("discord.js");
-
 const {allCommands} = require("./commands");
 
 const snakeToCamelCase = (str) =>

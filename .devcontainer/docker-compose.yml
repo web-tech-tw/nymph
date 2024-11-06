@@ -5,39 +5,19 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    container_name: local-app
     volumes:
       - ../..:/workspaces:cached
-    networks:
-      - nymph-dev
     command: sleep infinity
-
-  redis:
-    image: redis:latest
-    container_name: local-redis
-    networks:
-      - nymph-dev
-    restart: unless-stopped
+    network_mode: service:mongo
 
   mongo:
     image: mongo:latest
-    container_name: local-mongo
-    networks:
-      - nymph-dev
     restart: unless-stopped
 
-  express:
-    image: mongo-express:latest
-    container_name: local-express
+  redis:
+    image: redis:latest
     restart: unless-stopped
-    environment:
-      ME_CONFIG_BASICAUTH_USERNAME: developer
-      ME_CONFIG_BASICAUTH_PASSWORD: developer
-      ME_CONFIG_MONGODB_SERVER: local-mongo
-    networks:
-      - nymph-dev
 
-networks:
-  nymph-dev:
-    name: nymph-dev
-    driver: bridge
+  chroma:
+    image: chromadb/chroma:latest
+    restart: unless-stopped

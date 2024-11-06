@@ -1,7 +1,6 @@
 [
     {
-        "name": "Arona",
-        "discordChannelId": "996069746514612235",
-        "matrixRoomId": "!yTRzUDNyviBhrMwYGG:matrix.org"
+        "Discord": "996069746514612235",
+        "Matrix": "!yTRzUDNyviBhrMwYGG:matrix.org"
     }
 ]

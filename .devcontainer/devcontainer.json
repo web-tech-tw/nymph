@@ -1,5 +1,5 @@
 {
-	"name": "nymph-dev",
+	"name": "Node.js & Mongo DB",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
@@ -10,6 +10,6 @@
 			]
 		}
 	},
-	"forwardPorts": [3000, 3500, 8081],
+	"forwardPorts": [3000, 3500],
 	"postCreateCommand": "npm install"
 }

@@ -23,10 +23,11 @@ const {
     MessagesPlaceholder,
 } = require("@langchain/core/prompts");
 
-const redisUrl = getMust("REDIS_URL");
 const apiKey = getMust("GEMINI_API_KEY");
 const modelName = getMust("GEMINI_MODEL_NAME");
 const systemPrompt = getMust("GEMINI_SYSTEM_PROMPT");
+
+const redisUri = getMust("REDIS_URI");
 
 const model = new ChatGoogleGenerativeAI({
     apiKey,
@@ -49,7 +50,7 @@ const promptTemplate = ChatPromptTemplate.
 async function chatWithAI(chatId, humanInput) {
     const chatHistory = new RedisChatMessageHistory({
         config: {
-            url: redisUrl,
+            url: redisUri,
         },
         sessionId: `nymph:ai:${chatId}`,
         sessionTTL: 150,
