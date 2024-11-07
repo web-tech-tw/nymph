@@ -1,7 +1,7 @@
 {
-  "name": "template.recv",
+  "name": "nymph",
   "version": "1.0.0",
-  "description": "A tiny but powerful microservice framework.",
+  "description": "The artificial intelligence powered by opensource.",
   "author": "Taiwan Web Technology Promotion Organization",
   "homepage": "https://web-tech.tw",
   "license": "MIT",
