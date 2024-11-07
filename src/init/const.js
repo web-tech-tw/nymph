@@ -2,7 +2,7 @@
 // Constants
 
 exports.APP_NAME = "Nymph";
-exports.APP_DESCRIPTION = "The artificial intelligence powered by open source.";
+exports.APP_DESCRIPTION = "The artificial intelligence powered by opensource.";
 
 exports.APP_VERSION = "latest";
 
