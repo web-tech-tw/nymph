@@ -9,14 +9,14 @@ exports.relayText = (platform, roomId, text, name) => {
         return;
     }
     text = `${name} ⬗ ${platform}\n${text}`;
-    sender.broadcast(platform, recipients, text, true);
+    sender.broadcast(platform, recipients, text, false);
 };
 
-exports.useSendText = (platform, roomId) => (text) => {
+exports.sendText = (platform, roomId, text, included=false) => {
     const recipients = finder(platform, roomId);
     text = `⬖ Nymph\n${text}`;
     if (recipients) {
-        sender.broadcast(platform, recipients, text);
+        sender.broadcast(platform, recipients, text, included);
     } else {
         sender.send(platform, roomId, text);
     }

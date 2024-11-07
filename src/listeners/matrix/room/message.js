@@ -1,7 +1,12 @@
 "use strict";
 
-const {useClient} = require("../../../clients/matrix");
-const {chatWithAI} = require("../../../clients/langchain");
+const {
+    useClient,
+    fetchUserId,
+} = require("../../../clients/matrix");
+const {
+    chatWithAI,
+} = require("../../../clients/langchain");
 
 const {
     PLATFORM_MATRIX,
@@ -9,8 +14,14 @@ const {
 
 const {
     relayText,
-    useSendText,
+    sendText,
 } = require("../../../bridges");
+
+const hey = (roomId) => ({
+    say: (text) => {
+        sendText(PLATFORM_MATRIX, roomId, text, true);
+    },
+});
 
 const prefix = "Nymph ";
 
@@ -23,7 +34,7 @@ const prefix = "Nymph ";
  */
 module.exports = async (roomId, event) => {
     const client = await useClient();
-    const clientId = await client.getUserId();
+    const clientId = await fetchUserId(client);
 
     const {
         event_id: eventId,
@@ -47,14 +58,9 @@ module.exports = async (roomId, event) => {
         return;
     }
 
-    const sendText = useSendText(
-        PLATFORM_MATRIX,
-        roomId,
-    );
-
     requestContent = requestContent.slice(prefix.length).trim();
     if (!requestContent) {
-        sendText("所收到的訊息意圖不明。");
+        hey(roomId).say("所收到的訊息意圖不明。");
         return;
     }
 
@@ -63,15 +69,15 @@ module.exports = async (roomId, event) => {
         responseContent = await chatWithAI(roomId, requestContent);
     } catch (error) {
         console.error(error);
-        sendText("所收到的訊息意圖不明。");
+        hey(roomId).say("所收到的訊息意圖不明。");
         return;
     }
 
     responseContent = responseContent.trim();
     if (!responseContent) {
-        sendText("所收到的訊息意圖不明。");
+        hey(roomId).say("所收到的訊息意圖不明。");
         return;
     }
 
-    sendText(responseContent);
+    hey(roomId).say(responseContent);
 };

@@ -57,9 +57,9 @@ exports.send = (platform, recipient, text) => {
     sendMessage(recipient, text);
 };
 
-exports.broadcast = (platform, recipients, text, skip=false) => {
+exports.broadcast = (platform, recipients, text, included) => {
     for (const [itemPlatform, itemRoomId] of Object.entries(recipients)) {
-        if (skip && itemPlatform === platform) {
+        if (!included && itemPlatform === platform) {
             continue;
         }
         const sendMessage = messageSender[itemPlatform];
