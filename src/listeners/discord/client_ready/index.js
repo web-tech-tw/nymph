@@ -10,7 +10,6 @@ const {
 } = require("discord.js");
 
 /**
- * @param {discord.Interaction} interaction
  * @return {void}
  */
 module.exports = () => {

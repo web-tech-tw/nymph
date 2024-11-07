@@ -7,6 +7,7 @@ const {
 } = require("../../../init/const");
 
 const {
+    hasRelay,
     relayText,
     sendText,
 } = require("../../../bridges");
@@ -24,8 +25,11 @@ const prefix = "Nymph ";
 const hey = (message) => ({
     say: (text) => {
         const roomId = message.channel.id;
-        sendText(PLATFORM_DISCORD, roomId, text);
-        message.reply(text);
+        if (hasRelay(PLATFORM_DISCORD, roomId)) {
+            sendText(PLATFORM_DISCORD, roomId, text);
+        } else {
+            message.reply(text);
+        }
     },
 });
 

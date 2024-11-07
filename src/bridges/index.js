@@ -3,6 +3,10 @@
 const finder = require("./finder");
 const sender = require("./sender");
 
+exports.hasRelay = (platform, roomId) => {
+    return !!finder(platform, roomId);
+};
+
 exports.relayText = (platform, roomId, text, name) => {
     const recipients = finder(platform, roomId);
     if (!recipients) {
