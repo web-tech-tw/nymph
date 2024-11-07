@@ -87,6 +87,26 @@ exports.useClient = async (cached = true) => {
     return client;
 };
 
+/**
+ * The cached client.
+ * @type {string|undefined}
+ */
+let userId;
+/**
+ * Fetch Matrix user ID
+ *
+ * @param {MatrixClient} client - The client
+ * @param {boolean} cached - Fetch the cached user ID
+ * @return {Promise<string>} - The user ID
+ */
+exports.fetchUserId = async (client, cached = true) => {
+    if (cached && userId) {
+        return userId;
+    }
+    userId = await client.getUserId();
+    return userId;
+};
+
 exports.startSync = async () => {
     const joinedRooms = await client.getJoinedRooms();
     await client.crypto.prepare(joinedRooms);

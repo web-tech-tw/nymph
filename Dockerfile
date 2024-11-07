@@ -1,22 +1,19 @@
-FROM node:18
+FROM node:20-alpine
 
 ENV RUNTIME_ENV container
 
-RUN useradd -u 3000 recv
+RUN adduser -u 3000 -D recv
 
-RUN mkdir -p \
-    /home/recv \
-    /workplace
-
+RUN mkdir -p /.npm /workplace
 WORKDIR /workplace
 ADD . /workplace
 
 RUN chown -R \
     3000:3000 \
-    /home/recv \
-    /workplace
+    /.npm /workplace
 
 USER 3000
 RUN npm install
 
+EXPOSE 3000
 CMD ["npm", "start"]
