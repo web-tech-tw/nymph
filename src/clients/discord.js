@@ -17,7 +17,7 @@ const {
 
 const botToken = getMust("DISCORD_BOT_TOKEN");
 
-const newClient = async () => {
+const newClient = () => {
     const client = new Client({
         partials: [
             Partials.Channel,
@@ -49,11 +49,11 @@ let client;
  * @param {boolean} cached - Use the cached client
  * @return {Client} - The client
  */
-exports.useClient = async (cached = true) => {
+exports.useClient = (cached = true) => {
     if (cached && client) {
         return client;
     }
-    client = await newClient();
+    client = newClient();
     return client;
 };
 

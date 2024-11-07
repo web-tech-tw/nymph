@@ -8,7 +8,10 @@ const {
     middleware: createMiddleware,
 } = require("@line/bot-sdk");
 
-const newClient = (config) => {
+const newClient = () => {
+    const channelAccessToken = getMust("LINE_CHANNEL_ACCESS_TOKEN");
+    const channelSecret = getMust("LINE_CHANNEL_SECRET");
+    const config = {channelAccessToken, channelSecret};
     return new messagingApi.MessagingApiClient(config);
 };
 
@@ -31,11 +34,7 @@ exports.useClient = (cached = true) => {
     if (cached && client) {
         return client;
     }
-
-    client = newClient({
-        channelAccessToken: getMust("LINE_CHANNEL_ACCESS_TOKEN"),
-        channelSecret: getMust("LINE_CHANNEL_SECRET"),
-    });
+    client = newClient();
     return client;
 };
 
