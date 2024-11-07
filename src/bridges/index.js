@@ -14,7 +14,6 @@ exports.relayText = (platform, roomId, text, name) => {
 
 exports.sendText = (platform, roomId, text, included=false) => {
     const recipients = finder(platform, roomId);
-    text = `⬖ Nymph\n${text}`;
     if (recipients) {
         sender.broadcast(platform, recipients, text, included);
     } else {
