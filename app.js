@@ -3,7 +3,6 @@
 // Import config
 const {
     runLoader,
-    getMust,
     getEnvironmentOverview,
 } = require("./src/config");
 
@@ -12,9 +11,6 @@ runLoader();
 
 // Import constants
 const constant = require("./src/init/const");
-
-// Import StatusCodes
-const {StatusCodes} = require("http-status-codes");
 
 // Import useApp
 const {useApp} = require("./src/init/express");
@@ -35,13 +31,9 @@ const prepareHandlers = [
     prepareListener,
 ];
 
-// Redirect / to INDEX_REDIRECT_URL
+// Render index page
 app.get("/", (_, res) => {
-    const redirectCode = getMust("INDEX_REDIRECT_TYPE") === "permanent" ?
-        StatusCodes.MOVED_PERMANENTLY :
-        StatusCodes.MOVED_TEMPORARILY;
-    const redirectUrl = getMust("INDEX_REDIRECT_URL");
-    res.redirect(redirectCode, redirectUrl);
+    res.render("index");
 });
 
 // The handler for robots.txt (deny all friendly robots)

@@ -23,6 +23,10 @@ const isEnabledRedirectHttpHttps = getEnabled("ENABLED_REDIRECT_HTTP_HTTPS");
 const isEnabledCors = getEnabled("ENABLED_CORS");
 const isEnabledCorsOriginCheck = getEnabled("ENABLED_CORS_ORIGIN_CHECK");
 
+// ejs template engine
+app.set("view engine", "ejs");
+app.set("views", __dirname + "/../../views");
+
 // Optional settings
 if (trustProxy.length) {
     app.set("trust proxy", trustProxy);
