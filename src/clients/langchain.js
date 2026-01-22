@@ -115,6 +115,51 @@ function sliceContent(content, maxLength, separator = "\n") {
     return snippets;
 }
 
+/**
+ * Translate text between two languages if needed, preserving meaning.
+ * Returns the original text if no translation is necessary.
+ * @param {string} chatId
+ * @param {string} content
+ * @param {string[]} [langs] - Optional array of two language codes.
+ *  Example: ["en", "zh"].
+ * @return {Promise<string>}
+ */
+async function translateText(chatId, content, langs = null) {
+    // langs should be an array of two language codes, e.g. ["en", "zh"].
+    // If langs is not provided, assume English <-> Chinese as default.
+    let langA = "en";
+    let langB = "zh";
+    if (langs && langs.length === 2) {
+        [langA, langB] = langs;
+    }
+
+    const promptLines = [
+        "You are a translation assistant.",
+        "Two language codes are provided: " + langA + " and " + langB + ".",
+        "For the given text, determine whether it is written in " + langA +
+            " or " + langB + ".",
+        "- If it is in " + langA + ",",
+        "  translate it into " + langB + ".",
+        "- If it is in " + langB + ",",
+        "  translate it into " + langA + ".",
+        "- If the text is already in the correct target language or",
+        "  does not need translation,",
+        "  return the original text unchanged.",
+        "Preserve meaning and style.",
+        "Only return the translated (or original) text",
+        "without extra commentary.",
+        "",
+        "Text:",
+        content,
+    ];
+
+    const prompt = promptLines.join("\n");
+
+    const sessionId = chatId + ":translate:" + langA + ":" + langB;
+    return (await chatWithAI(sessionId, prompt)).trim();
+}
+
 exports.useModel = () => model;
 exports.chatWithAI = chatWithAI;
 exports.sliceContent = sliceContent;
+exports.translateText = translateText;
