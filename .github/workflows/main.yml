@@ -48,7 +48,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Trigger deploy webhook
-        uses: wei/curl@master
-        with:
-          args: ${{ vars.DEPLOY_WEBHOOK_URL }}?secret=${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+      - name: Deploy via Webhook
+        env:
+          WEBHOOK_URL: ${{ vars.NYMPH_WEBHOOK_URL_PART_UP }}
+          WEBHOOK_SECRET: ${{ secrets._WEBHOOK_SECRET_PART_UP }}
+        run: |
+          ENV_JSON='{"secret":"'$WEBHOOK_SECRET'"}'
+          curl -X POST -H "Content-Type: application/json" -d "$ENV_JSON" "$WEBHOOK_URL"
