@@ -6,22 +6,15 @@ const {
 } = require("../config");
 
 const {
-    ConversationChain,
-} = require("langchain/chains");
-const {
-    BufferMemory,
-} = require("langchain/memory");
-const {
     RedisChatMessageHistory,
 } = require("@langchain/redis");
 const {
     ChatOpenAI,
 } = require("@langchain/openai");
 const {
-    ChatPromptTemplate,
-    SystemMessagePromptTemplate,
-    MessagesPlaceholder,
-} = require("@langchain/core/prompts");
+    HumanMessage,
+    SystemMessage,
+} = require("@langchain/core/messages");
 
 // Use OpenAI as the LLM provider.
 const baseURL = getMust("OPENAI_BASE_URL");
@@ -38,12 +31,6 @@ const model = new ChatOpenAI({
     modelName,
     temperature: 0.63,
 });
-const promptTemplate = ChatPromptTemplate.
-    fromMessages([
-        SystemMessagePromptTemplate.fromTemplate(systemPrompt),
-        new MessagesPlaceholder("history"),
-        ["human", "{humanInput}"],
-    ]);
 
 /**
  * Chat with the AI.
@@ -60,26 +47,41 @@ async function chatWithAI(chatId, humanInput) {
         sessionTTL: 150,
     });
 
-    const bufferMemory = new BufferMemory({
-        returnMessages: true,
-        memoryKey: "history",
-        inputKey: "humanInput",
-        chatHistory,
-    });
+    // Load previous messages from Redis history
+    const historyMessages = await chatHistory.getMessages();
 
-    const conversationChain = new ConversationChain({
-        llm: model,
-        prompt: promptTemplate,
-        memory: bufferMemory,
-    });
+    // Build message list: system prompt, previous history, current human input
+    const systemMsg = new SystemMessage(systemPrompt);
+    const humanMsg = new HumanMessage(humanInput);
+    const messages = [systemMsg, ...historyMessages, humanMsg];
 
-    const {
-        response: conversationResponse,
-    } = await conversationChain.invoke({
-        humanInput,
-    });
+    // Call the model directly with messages
+    const aiMsg = await model.invoke(messages);
 
-    return conversationResponse;
+    // Persist human + AI messages to history
+    try {
+        await chatHistory.addMessages([humanMsg, aiMsg]);
+    } catch (e) {
+        // Non-fatal — log but keep working
+        console.error("Failed to save messages to Redis history:", e);
+    }
+
+    // Normalize response text
+    let responseText = "";
+    if (aiMsg) {
+        if (typeof aiMsg.content === "string") {
+            responseText = aiMsg.content;
+        } else if (Array.isArray(aiMsg.content) && aiMsg.content.length) {
+            responseText = typeof aiMsg.content[0] === "string" ?
+                aiMsg.content[0] : JSON.stringify(aiMsg.content[0]);
+        } else if (aiMsg.text) {
+            responseText = aiMsg.text;
+        } else {
+            responseText = String(aiMsg);
+        }
+    }
+
+    return responseText;
 }
 
 /**
