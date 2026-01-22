@@ -15,22 +15,26 @@ const {
     RedisChatMessageHistory,
 } = require("@langchain/redis");
 const {
-    ChatGoogleGenerativeAI,
-} = require("@langchain/google-genai");
+    ChatOpenAI,
+} = require("@langchain/openai");
 const {
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     MessagesPlaceholder,
 } = require("@langchain/core/prompts");
 
-const apiKey = getMust("GEMINI_API_KEY");
-const modelName = getMust("GEMINI_MODEL_NAME");
-const systemPrompt = getMust("GEMINI_SYSTEM_PROMPT");
-
+// Use OpenAI as the LLM provider.
+const baseURL = getMust("OPENAI_BASE_URL");
+const apiKey = getMust("OPENAI_API_KEY");
+const modelName = getMust("OPENAI_MODEL_NAME");
+const systemPrompt = getMust("OPENAI_SYSTEM_PROMPT");
 const redisUri = getMust("REDIS_URI");
 
-const model = new ChatGoogleGenerativeAI({
-    apiKey,
+const model = new ChatOpenAI({
+    configuration: {
+        apiKey,
+        baseURL,
+    },
     modelName,
     temperature: 0.63,
 });
