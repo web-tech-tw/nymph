@@ -52,11 +52,11 @@ jobs:
         env:
           WEBHOOK_URL: ${{ vars._WEBHOOK_URL_PART_UP }}
           WEBHOOK_SECRET: ${{ secrets._WEBHOOK_SECRET_PART_UP }}
-          WEBHOOK_PAYLOAD: ${{ vars._WEBHOOK_PAYLOAD_PART_UP }}
+          WEBHOOK_DEPLOY_PATH: ${{ vars._WEBHOOK_DEPLOY_PATH }}
         run: |
           curl --fail-with-body \
             -X POST \
             -H "X-Nymph-Stack-Secret: $WEBHOOK_SECRET" \
             -H "Content-Type: application/json" \
-            -d "$WEBHOOK_PAYLOAD" \
+            -d "{\"path\": \"$WEBHOOK_DEPLOY_PATH\"}" \
             "$WEBHOOK_URL"
