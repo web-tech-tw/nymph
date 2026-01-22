@@ -50,8 +50,13 @@ jobs:
     steps:
       - name: Deploy via Webhook
         env:
-          WEBHOOK_URL: ${{ vars.NYMPH_WEBHOOK_URL_PART_UP }}
+          WEBHOOK_URL: ${{ vars._WEBHOOK_URL_PART_UP }}
           WEBHOOK_SECRET: ${{ secrets._WEBHOOK_SECRET_PART_UP }}
+          WEBHOOK_PAYLOAD: ${{ vars._WEBHOOK_PAYLOAD_PART_UP }}
         run: |
-          ENV_JSON='{"secret":"'$WEBHOOK_SECRET'"}'
-          curl -X POST -H "Content-Type: application/json" -d "$ENV_JSON" "$WEBHOOK_URL"
+          curl --fail-with-body \
+            -X POST \
+            -H "X-Nymph-Stack-Secret: $WEBHOOK_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "$WEBHOOK_PAYLOAD" \
+            "$WEBHOOK_URL"
