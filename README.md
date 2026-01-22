@@ -1,83 +1,89 @@
-# Template RECV
+# Nymph
 
-[網頁客戶端](https://github.com/web-tech-tw/template.inte) | 伺服器端
+Nymph 是一個由 AI 驅動的多功能自動化機器人，旨在協助自動化資源管理、活動監控以及提供即時支援。
 
-一個小型卻強大的微服務框架。 A tiny but powerful microservice framework.
+## 主要功能
 
-本系統為本組織的通用伺服器端範本，為敏捷開發而生。
+* **多平台整合**：支援 Line, Discord, Matrix 的訊息監聽與串接。
+* **AI Agent 核心**：整合 OpenAI (透過 LangChain)，提供智慧對話與翻譯功能。
+* **對話記憶**：基於 Redis 儲存對話歷史，支援上下文理解。
+* **開發友善**：支援 OpenAPI 文件匯出，並內建 Dockerfile 以利容器化部署。
 
-本系統提供了一個簡單的架構，讓開發者可以快速開發出一個微服務。
+## 系統需求
 
-本系統架構預設為 **單機模式** 設計。若有需求可自行擴充修改為 **分散式模式**。
+* Node.js >= 20
+* Redis (用於儲存對話記憶)
+* OpenAI 帳戶與 API Key
 
-## 系統架構
+## 快速開始
 
-本系統採用 node.js 打造，使用 express.js 作為基礎框架，並擴充了許多功能。
+1. **安裝相依套件**
 
-推薦運行於 `node.js 20` 以上版本。自帶 docker 範本，可快速部署。
-
-- 基於 express.js 擴充的微服務框架，可相容 express.js 的所有功能及生態系統。
-- 採用 commonjs 模組系統，可相容大部分 npm 套件及快速引用模組。
-- 內建 node-cache 作為快取系統，可快速存取資料。
-- 內建 mongoose 作為資料庫系統，可快速存取資料庫。
-- 內建 jsonwebtoken 作為授權系統，可快速授權。
-- 內建 mocha 作為自動化測試系統，可快速進行自動化測試。
-- 內建 nodemon 作為開發除錯系統，可快速進行開發除錯。
-- 內建 dotenv 作為環境變數系統，可快速設定環境變數。
-- 內建 cors 作為跨來源資源共用系統，可快速設定跨來源資源共用。
-- 內建 swagger 作為 API 文件系統，可快速產生 API 文件。
-- 自帶 GitHub Actions 範本，可快速進行自動化測試、組建容器、部署容器等功能。
-- 自帶 VScode DevContainer 範本，可快速進行開發、測試等功能。
-- 具有快速驗證、快速授權、快速存取資料庫、快速存取快取等功能。
-- 具有快速開發、快速測試、快速部署等功能。
-- 高擴充性，可自行擴充功能。
-
-## 系統設定
-
-### 安裝相依套件
-
-本專案使用 Node.js 作為開發環境，請先安裝 Node.js。
-
-該指令會安裝專案所需的相依套件。
-
-```sh
+```bash
 npm install
 ```
 
-### 自動化測試
+2. **啟動開發環境**
 
-本專案採用 Mocha 作為自動化測試框架。
+請先在專案根目錄建立 `.env` 檔案（參考下方說明），接著啟動伺服器：
 
-該指令會執行所有測試案例。
-
-```sh
-npm run test
-```
-
-### 開發除錯模式
-
-本專案採用 Nodemon 作為開發除錯工具。
-
-該指令會啟動伺服器，並在程式碼變更時自動重啟伺服器。
-
-```sh
+```bash
 npm run dev
 ```
 
-### 正式產品模式
+3. **執行測試**
 
-該指令會啟動伺服器。
-
-```sh
-npm start
+```bash
+npm run test
 ```
 
-## 開放原始碼授權
+## 環境變數設定 (.env)
 
-本專案採用 MIT 開放原始碼授權。
+**核心設定 (AI 功能必填)：**
 
-詳細可參閱 [LICENSE](LICENSE) 檔案。
+* `OPENAI_BASE_URL` — OpenAI API 網址
+* `OPENAI_API_KEY` — OpenAI API 金鑰
+* `OPENAI_MODEL_NAME` — 模型名稱 (例如 `gpt-4o`)
+* `OPENAI_SYSTEM_PROMPT` — Agent 的系統提示詞 (System Prompt)
+* `REDIS_URI` — Redis 連線字串
 
----
+**平台整合 (選填，視需求啟用)：**
 
-&copy; [Taiwan Web Technology Promotion Organization](https://web-tech.tw)
+* `DISCORD_BOT_TOKEN`
+* `LINE_CHANNEL_SECRET`
+* `LINE_CHANNEL_TOKEN`
+
+**.env 範例** (請勿將真實金鑰提交至版控系統)：
+
+```ini
+NODE_ENV=development
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL_NAME=gpt-4o
+OPENAI_SYSTEM_PROMPT=You are an assistant.
+REDIS_URI=redis://localhost:6379
+
+```
+
+## 專案結構
+
+* `app.js` — 應用程式入口與路由設定
+* `src/init/` — 初始化模組 (Express, 資料庫, 監聽服務)
+* `src/listeners/` — 各平台的事件處理器 (Event Handlers)
+* `src/clients/langchain.js` — AI Agent 核心實作 (聊天、翻譯、記憶管理)
+* `src/clients/` — 第三方 API 客戶端封裝
+* `src/bridges/` — 橋接邏輯 (訊息查找/發送)
+* `export_openapi.js` — OpenAPI JSON 匯出工具
+
+## 開發備忘
+
+* 匯出 OpenAPI 文件：`node export_openapi.js`
+* 執行單元測試：`npm run test`
+
+## 參與貢獻
+
+歡迎提交 PR 或 Issue！提交前請務必遵循本專案的程式碼規範。
+
+## 授權
+
+MIT — 詳情請參閱 `LICENSE` 文件。
