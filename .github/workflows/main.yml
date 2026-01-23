@@ -54,8 +54,7 @@ jobs:
           WEBHOOK_SECRET: ${{ secrets._WEBHOOK_SECRET_PART_UP }}
           WEBHOOK_DEPLOY_PATH: ${{ vars._WEBHOOK_DEPLOY_PATH }}
         run: |
-          curl --fail-with-body \
-            -X POST \
+          curl --silent --show-error --fail -X POST \
             -H "X-Nymph-Stack-Secret: $WEBHOOK_SECRET" \
             -H "Content-Type: application/json" \
             -d "{\"path\": \"$WEBHOOK_DEPLOY_PATH\"}" \
