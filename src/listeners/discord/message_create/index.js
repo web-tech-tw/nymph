@@ -1,17 +1,33 @@
 "use strict";
 
-const discord = require("discord.js");
+const {
+    PLATFORM_DISCORD,
+} = require("../../../init/const");
 
-const {PLATFORM_DISCORD} = require("../../../init/const");
+const {
+    hasRelay,
+    relayText,
+    sendText,
+} = require("../../../bridges");
+const {
+    useClient,
+} = require("../../../clients/discord");
 
-const {hasRelay, relayText, sendText} = require("../../../bridges");
+const {
+    chatWithAI,
+    sliceContent,
+    translateText,
+} = require("../../../clients/langchain");
 
-const {useClient} = require("../../../clients/discord");
-const {chatWithAI, sliceContent, translateText} =
-    require("../../../clients/langchain");
+const Room = require("../../../models/room");
 
 const prefix = "Nymph ";
 
+/**
+ * Returns an object with a `say` method to send replies.
+ * @param {Object} message - The Discord message object.
+ * @return {Object} An object with a `say` method.
+ */
 const hey = (message) => ({
     say: (text) => {
         const roomId = message.channel.id;
@@ -23,15 +39,21 @@ const hey = (message) => ({
     },
 });
 
-const extractContent = (message, client) => {
-    // Replace mentions with @username
+/**
+ * Parse message content by replacing mentions and removing prefix.
+ * @param {Object} message - The Discord message object.
+ * @param {Object} client - The Discord client object.
+ * @return {string} The parsed content.
+ */
+const parseContent = (message, client) => {
+    // Replace mentions with usernames
     let content = message.content.replace(/<@!?\d+>/g, (mention) => {
         const userId = mention.replace(/<@!?|>/g, "");
         const user = client.users.cache.get(userId);
         return `@${user ? user.username : "Unknown"}`;
     }).trim();
 
-    // Remove prefix if present to simplify command parsing
+    // Remove prefix if present
     if (content.startsWith(prefix)) {
         content = content.slice(prefix.length).trim();
     }
@@ -40,145 +62,92 @@ const extractContent = (message, client) => {
 };
 
 /**
- * @param {discord.Message} message
- * @return {void}
+ * Process chat logic
+ * @param {Object} message - The Discord message object.
+ * @param {string} content - The message content.
+ * @return {Promise<void>}
  */
-module.exports = async (message) => {
-    const client = useClient();
-
-    if (message.author.bot) {
-        return;
+const processChat = async (message, content) => {
+    if (!content) {
+        return hey(message).say("所收到的訊息意圖不明。");
     }
 
-    const isMentioned = message.mentions.users.has(client.user.id);
-    const hasPrefix = message.content.startsWith(prefix);
-    const isDirectCall = isMentioned || hasPrefix;
+    await message.channel.sendTyping();
 
-    // Extract content without mention / prefix
-    const requestContent = extractContent(message, client);
+    try {
+        const response = await chatWithAI(message.channel.id, content);
 
-    // Always relay the incoming content (extracted)
-    relayText(
-        PLATFORM_DISCORD,
-        message.channel.id,
-        requestContent,
-        message.author.username,
-    );
-
-    const Room = require("../../../models/room");
-
-    // Command Layer: only when explicitly called (prefix or mention)
-    if (isDirectCall) {
-        if (!requestContent) {
-            hey(message).say("所收到的訊息意圖不明。");
-            return;
+        if (!response?.trim()) {
+            return hey(message).say("無法正常回覆，請換個說法試試。");
         }
 
-        // Handle mode commands (e.g., "普通模式", "翻譯模式 A B")
-        const content = requestContent;
-
-        // 切換回普通模式
-        if (content === "普通模式") {
-            try {
-                await Room.findOneAndUpdate(
-                    {platform: PLATFORM_DISCORD, roomId: message.channel.id},
-                    {mode: "normal", languages: []},
-                    {upsert: true, new: true},
-                );
-                hey(message).say("已切換回普通模式 (Normal Mode)。");
-                return;
-            } catch (err) {
-                console.error("Failed to set normal mode:", err);
-                hey(message).say("無法切換模式，請稍後再試。");
-                return;
-            }
-        }
-
-        // 翻譯模式，格式：翻譯模式 LangA LangB
-        if (content.startsWith("翻譯模式")) {
-            const args = content.split(/\s+/);
-            if (args.length < 3) {
-                hey(message).say("指令錯誤。請指定兩種語言，例如：");
-                hey(message).say("`Nymph 翻譯模式 繁體中文 English`");
-                return;
-            }
-            const langA = args[1];
-            const langB = args[2];
-            try {
-                await Room.findOneAndUpdate(
-                    {platform: PLATFORM_DISCORD, roomId: message.channel.id},
-                    {mode: "translator", languages: [langA, langB]},
-                    {upsert: true, new: true},
-                );
-                hey(message).say(`已啟動雙向翻譯模式：${langA} <-> ${langB}`);
-                return;
-            } catch (err) {
-                console.error("Failed to set translator mode:", err);
-                hey(message).say("無法啟動翻譯模式，請稍後再試。");
-                return;
-            }
-        }
-
-        // If it's a direct call and not a mode command, treat as chat
-        await message.channel.sendTyping();
-        try {
-            const responseContent = await chatWithAI(
-                message.channel.id,
-                requestContent,
-            );
-            if (!responseContent || !responseContent.trim()) {
-                hey(message).say("無法正常回覆，請換個說法試試。");
-                return;
-            }
-            const snippets = sliceContent(responseContent.trim(), 2000);
-            hey(message).say(snippets.shift());
-            snippets.forEach((snippet) => {
-                hey(message).say(snippet);
-            });
-        } catch (err) {
-            console.error(err);
-            hey(message).say("思緒混亂，無法回覆。");
-        }
-
-        return;
+        const snippets = sliceContent(response.trim(), 2000);
+        snippets.forEach((snippet) => hey(message).say(snippet));
+    } catch (err) {
+        console.error("Chat Error:", err);
+        hey(message).say("思緒混亂，無法回覆。");
     }
+};
 
-    // State Layer / Business Logic for non-direct messages
-    // Only needs to check if channel is in translator mode
+/**
+ * Process translation logic
+ * @param {Object} message - The Discord message object.
+ * @param {string} content - The message content.
+ * @return {Promise<void>}
+ */
+const processTranslation = async (message, content) => {
     try {
         const roomRecord = await Room.findOne({
             platform: PLATFORM_DISCORD,
             roomId: message.channel.id,
         });
 
-        const currentMode = roomRecord ? roomRecord.mode : "normal";
-        console.log("Current mode:", currentMode);
+        if (roomRecord?.mode !== "translator") return;
 
-        // Translator Mode: translate every message unless it's a direct call
-        if (currentMode === "translator") {
-            try {
-                let langs = null;
-                if (roomRecord.languages && roomRecord.languages.length === 2) {
-                    langs = roomRecord.languages;
-                }
-                const translated = await translateText(
-                    message.channel.id,
-                    requestContent,
-                    langs,
-                );
-                if (translated && translated !== requestContent) {
-                    // Post translation as a normal message
-                    message.channel.send(`[譯] ${translated}`);
-                }
-            } catch (err) {
-                console.error("Translation failed:", err);
-            }
-            return;
+        // 檢查是否設定特定雙語
+        const langs = (
+            roomRecord.languages?.length === 2
+        ) ? roomRecord.languages : null;
+
+        const translated = await translateText(
+            message.channel.id,
+            content, langs,
+        );
+
+        if (translated && translated !== content) {
+            message.channel.send(`[譯] ${translated}`);
         }
     } catch (err) {
-        console.error("Channel lookup failed:", err);
+        console.error("Translation Error:", err);
     }
+};
 
-    // Normal mode and not directly called: do nothing
-    return;
+// Event handler for message creation
+module.exports = async (message) => {
+    const client = useClient();
+
+    if (message.author.bot) return;
+
+    // Detect if the bot is mentioned or if the message starts with the prefix
+    const isMentioned = message.mentions.users.has(client.user.id);
+    const hasPrefix = message.content.startsWith(prefix);
+    const isDirectCall = isMentioned || hasPrefix;
+
+    // Parse message content
+    const content = parseContent(message, client);
+
+    // Really relay the message
+    relayText(
+        PLATFORM_DISCORD,
+        message.channel.id,
+        content,
+        message.author.username,
+    );
+
+    // Process chat or translation based on the call type
+    if (isDirectCall) {
+        await processChat(message, content);
+    } else {
+        await processTranslation(message, content);
+    }
 };
