@@ -16,6 +16,11 @@ const {
     SystemMessage,
 } = require("@langchain/core/messages");
 
+const {
+    createCurrentDateTime,
+    createOpenWeatherMapQueryRun,
+} = require("../tools");
+
 // Use OpenAI as the LLM provider.
 const baseURL = getMust("OPENAI_BASE_URL");
 const apiKey = getMust("OPENAI_API_KEY");
@@ -159,7 +164,82 @@ async function translateText(chatId, content, langs = null) {
     return (await chatWithAI(sessionId, prompt)).trim();
 }
 
+/**
+ * Create or initialize a tools-enabled agent executor.
+ * @param {object} options
+ * @param {string} [options.openWeatherApiKey] - Optional OpenWeather API
+ * key override.
+ * @return {Promise<object>} The executor with a `call` method.
+ */
+async function createToolsAgent({openWeatherApiKey = null} = {}) {
+    const tools = [
+        createCurrentDateTime(),
+        createOpenWeatherMapQueryRun({
+            apiKey: openWeatherApiKey || getMust("OPENWEATHER_API_KEY"),
+        }),
+    ];
+
+    const agentsModule = await import("@langchain/classic/agents");
+    const {initializeAgentExecutorWithOptions} = agentsModule;
+    const executor = await initializeAgentExecutorWithOptions(tools, model, {
+        agentType: "zero-shot-react-description",
+        maxIterations: 3,
+        returnIntermediateSteps: false,
+    });
+
+    return executor;
+}
+
+/**
+ * Chat with the AI using the agent + tools.
+ * @param {string} chatId
+ * @param {string} humanInput
+ * @param {object} [opts]
+ * @return {Promise<string>}
+ */
+async function chatWithTools(chatId, humanInput, opts = {}) {
+    const chatHistory = new RedisChatMessageHistory({
+        config: {url: redisUri},
+        sessionId: `nymph:agent:${chatId}`,
+        sessionTTL: 150,
+    });
+
+    const historyMessages = await chatHistory.getMessages();
+    const historyText = historyMessages.map((m) => (
+        typeof m.content === "string" ?
+            m.content : JSON.stringify(m.content)
+    )).join("\n");
+
+    const systemMsg = systemPrompt;
+    const prompt = [
+        systemMsg,
+        historyText,
+        humanInput,
+    ].filter(Boolean).join("\n\n");
+
+    const executor = await createToolsAgent(opts);
+
+    // executor.call usually returns { output } or string; handle common shapes.
+    const result = await executor.call({input: prompt});
+
+    const outputText = result?.output?.text || result?.output || result;
+
+    // Save human + agent output back to history (best-effort)
+    try {
+        await chatHistory.addMessages([
+            new HumanMessage(humanInput),
+            new SystemMessage(String(outputText)),
+        ]);
+    } catch (e) {
+        console.error("Failed to save agent messages to Redis history:", e);
+    }
+
+    return String(outputText);
+}
+
 exports.useModel = () => model;
 exports.chatWithAI = chatWithAI;
+exports.chatWithTools = chatWithTools;
 exports.sliceContent = sliceContent;
 exports.translateText = translateText;
+exports.createToolsAgent = createToolsAgent;
