@@ -1,5 +1,6 @@
 "use strict";
 
+const discord = require("discord.js");
 const {allCommands} = require("./commands");
 
 const snakeToCamelCase = (str) =>
@@ -11,7 +12,8 @@ const snakeToCamelCase = (str) =>
     );
 
 /**
- * @param {discord.Interaction} interaction
+ * Handles Discord interaction create events.
+ * @param {discord.Interaction} interaction - The Discord interaction object.
  * @return {void}
  */
 module.exports = async (interaction) => {
