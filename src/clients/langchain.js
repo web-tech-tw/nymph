@@ -6,6 +6,9 @@ const {
 } = require("../config");
 
 const {
+    createAgent,
+} = require("langchain");
+const {
     RedisChatMessageHistory,
 } = require("@langchain/redis");
 const {
@@ -179,15 +182,9 @@ async function createToolsAgent({openWeatherApiKey = null} = {}) {
         }),
     ];
 
-    const agentsModule = await import("@langchain/classic/agents");
-    const {initializeAgentExecutorWithOptions} = agentsModule;
-    const executor = await initializeAgentExecutorWithOptions(tools, model, {
-        agentType: "zero-shot-react-description",
-        maxIterations: 3,
-        returnIntermediateSteps: false,
-    });
+    const agent = createAgent({model, tools});
 
-    return executor;
+    return agent;
 }
 
 /**
@@ -217,10 +214,12 @@ async function chatWithTools(chatId, humanInput, opts = {}) {
         humanInput,
     ].filter(Boolean).join("\n\n");
 
-    const executor = await createToolsAgent(opts);
+    const agent = await createToolsAgent(opts);
 
-    // executor.call usually returns { output } or string; handle common shapes.
-    const result = await executor.call({input: prompt});
+    // Use agent.invoke with messages
+    const result = await agent.invoke({
+        messages: [{role: "user", content: prompt}],
+    });
 
     const outputText = result?.output?.text || result?.output || result;
 
