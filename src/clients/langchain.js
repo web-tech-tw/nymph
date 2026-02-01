@@ -15,6 +15,7 @@ const {
     ChatOpenAI,
 } = require("@langchain/openai");
 const {
+    AIMessage,
     HumanMessage,
     SystemMessage,
 } = require("@langchain/core/messages");
@@ -44,9 +45,10 @@ const model = new ChatOpenAI({
  * Chat with the AI.
  * @param {string} chatId The chat ID to chat with the AI.
  * @param {string} humanInput The prompt to chat with the AI.
+ * @param {object} [opts] Additional options.
  * @return {Promise<string>} The response from the AI.
  */
-async function chatWithAI(chatId, humanInput) {
+async function chatWithAI(chatId, humanInput, opts = {}) {
     const chatHistory = new RedisChatMessageHistory({
         config: {
             url: redisUri,
@@ -63,8 +65,12 @@ async function chatWithAI(chatId, humanInput) {
     const humanMsg = new HumanMessage(humanInput);
     const messages = [systemMsg, ...historyMessages, humanMsg];
 
+    // Wrap the model with tools as an agent
+    const agent = await createToolsAgent(opts);
+
     // Call the model directly with messages
-    const aiMsg = await model.invoke(messages);
+    const {messages: responseMessages} = await agent.invoke({messages});
+    const aiMsg = responseMessages.findLast(AIMessage.isInstance);
 
     // Persist human + AI messages to history
     try {
@@ -187,58 +193,8 @@ async function createToolsAgent({openWeatherApiKey = null} = {}) {
     return agent;
 }
 
-/**
- * Chat with the AI using the agent + tools.
- * @param {string} chatId
- * @param {string} humanInput
- * @param {object} [opts]
- * @return {Promise<string>}
- */
-async function chatWithTools(chatId, humanInput, opts = {}) {
-    const chatHistory = new RedisChatMessageHistory({
-        config: {url: redisUri},
-        sessionId: `nymph:agent:${chatId}`,
-        sessionTTL: 150,
-    });
-
-    const historyMessages = await chatHistory.getMessages();
-    const historyText = historyMessages.map((m) => (
-        typeof m.content === "string" ?
-            m.content : JSON.stringify(m.content)
-    )).join("\n");
-
-    const systemMsg = systemPrompt;
-    const prompt = [
-        systemMsg,
-        historyText,
-        humanInput,
-    ].filter(Boolean).join("\n\n");
-
-    const agent = await createToolsAgent(opts);
-
-    // Use agent.invoke with messages
-    const result = await agent.invoke({
-        messages: [{role: "user", content: prompt}],
-    });
-
-    const outputText = result?.output?.text || result?.output || result;
-
-    // Save human + agent output back to history (best-effort)
-    try {
-        await chatHistory.addMessages([
-            new HumanMessage(humanInput),
-            new SystemMessage(String(outputText)),
-        ]);
-    } catch (e) {
-        console.error("Failed to save agent messages to Redis history:", e);
-    }
-
-    return String(outputText);
-}
-
 exports.useModel = () => model;
 exports.chatWithAI = chatWithAI;
-exports.chatWithTools = chatWithTools;
 exports.sliceContent = sliceContent;
 exports.translateText = translateText;
 exports.createToolsAgent = createToolsAgent;
