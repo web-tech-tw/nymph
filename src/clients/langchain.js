@@ -22,6 +22,7 @@ const {
 
 const {
     createCurrentDateTime,
+    createKnowledgeDocs,
     createOpenWeatherMapQueryRun,
 } = require("../tools");
 
@@ -183,6 +184,7 @@ async function translateText(chatId, content, langs = null) {
 async function createToolsAgent({openWeatherApiKey = null} = {}) {
     const tools = [
         createCurrentDateTime(),
+        createKnowledgeDocs(),
         createOpenWeatherMapQueryRun({
             apiKey: openWeatherApiKey || getMust("OPENWEATHER_API_KEY"),
         }),
