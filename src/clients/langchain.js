@@ -2,6 +2,7 @@
 // langchain is a toolkit for conversation models.
 
 const {
+    get,
     getMust,
 } = require("../config");
 
@@ -175,20 +176,64 @@ async function translateText(chatId, content, langs = null) {
 }
 
 /**
+ * @typedef {object} CreateToolsAgentOptions
+ * @property {object} [openWeatherMapQueryRun]
+ * @property {boolean} [openWeatherMapQueryRun.enabled]
+ * @property {object} [openWeatherMapQueryRun.config]
+ * @property {string|null} [openWeatherMapQueryRun.config.apiKey]
+ * @property {object} [knowledgeDocs]
+ * @property {boolean} [knowledgeDocs.enabled]
+ * @property {object} [knowledgeDocs.config]
+ * @property {string|null} [knowledgeDocs.config.googleApiKey]
+ * @property {object} [knowledgeDocs.config.googleOptions]
+ */
+
+/**
+ * @var {CreateToolsAgentOptions} DEFAULT_CREATE_TOOLS_AGENT_OPTS
+ */
+const DEFAULT_CREATE_TOOLS_AGENT_OPTS = {
+    openWeatherMapQueryRun: {
+        enabled: get("TOOL_OPEN_WEATHER_MAP_QUERY_RUN_ENABLED") === "yes",
+        config: {
+            apiKey: get("TOOL_OPEN_WEATHER_MAP_API_KEY") || null,
+        },
+    },
+    knowledgeDocs: {
+        enabled: get("TOOL_KNOWLEDGE_DOCS_ENABLED") === "yes",
+        config: {
+            googleApiKey: get("TOOL_KNOWLEDGE_DOCS_GOOGLE_API_KEY") || null,
+            googleOptions: JSON.parse(
+                get("TOOL_KNOWLEDGE_DOCS_GOOGLE_OPTIONS") || "{}",
+            ),
+        },
+    },
+};
+
+/**
  * Create or initialize a tools-enabled agent executor.
- * @param {object} options
- * @param {string} [options.openWeatherApiKey] - Optional OpenWeather API
- * key override.
+ * @param {CreateToolsAgentOptions} [opt] Options for creating the agent.
  * @return {Promise<object>} The executor with a `call` method.
  */
-async function createToolsAgent({openWeatherApiKey = null} = {}) {
+async function createToolsAgent(
+    opt = DEFAULT_CREATE_TOOLS_AGENT_OPTS,
+) {
     const tools = [
         createCurrentDateTime(),
-        createKnowledgeDocs(),
-        createOpenWeatherMapQueryRun({
-            apiKey: openWeatherApiKey || getMust("OPENWEATHER_API_KEY"),
-        }),
     ];
+
+    if (opt.openWeatherMapQueryRun?.enabled) {
+        const weatherTool = await createOpenWeatherMapQueryRun(
+            opt.openWeatherMapQueryRun.config,
+        );
+        tools.push(weatherTool);
+    }
+
+    if (opt.knowledgeDocs?.enabled) {
+        const knowledgeDocsTool = await createKnowledgeDocs(
+            opt.knowledgeDocs.config,
+        );
+        tools.push(knowledgeDocsTool);
+    }
 
     const agent = createAgent({model, tools});
 
