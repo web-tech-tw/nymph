@@ -1,30 +1,28 @@
-"use strict";
-
 // Import config
-const {
+import {
     runLoader,
     getEnvironmentOverview,
-} = require("./src/config");
+} from "./src/config.ts";
 
 // Load config
 runLoader();
 
 // Import constants
-const constant = require("./src/init/const");
+import * as constant from "./src/init/const.ts";
 
 // Import useApp
-const {useApp} = require("./src/init/express");
+import {useApp} from "./src/init/express.ts";
 
 // Initialize application
 const app = useApp();
 
 // Initialize prepare handlers
-const {
-    prepare: prepareDatabase,
-} = require("./src/init/database");
-const {
-    prepare: prepareListener,
-} = require("./src/init/listener");
+import {
+    prepare as prepareDatabase,
+} from "./src/init/database.ts";
+import {
+    prepare as prepareListener,
+} from "./src/init/listener.ts";
 
 const prepareHandlers = [
     prepareDatabase,
@@ -42,7 +40,7 @@ app.get("/robots.txt", (_, res) => {
 });
 
 // Load router dispatcher
-const routerDispatcher = require("./src/routes");
+import * as routerDispatcher from "./src/routes/index.ts";
 routerDispatcher.load();
 
 // Show banner message
@@ -54,7 +52,8 @@ routerDispatcher.load();
 })();
 
 // Mount application and execute it
-require("./src/execute")(app, prepareHandlers,
+import execute from "./src/execute.ts";
+execute(app, prepareHandlers,
     ({protocol, hostname, port}) => {
         console.info(`Protocol "${protocol}" is listening at`);
         console.info(`${protocol}://${hostname}:${port}`);

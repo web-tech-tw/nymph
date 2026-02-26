@@ -1,24 +1,26 @@
-"use strict";
 
-const {
+import {
     useClient,
-} = require("../../clients/line");
+} from "../../clients/line.ts";
 
-const triggers = {
-    message: require("./message"),
+import message from "./message/index.ts";
+
+const triggers: Record<string, any> = {
+    message: message,
 };
 
-exports.useDispatcher = () => async (event) => {
+export const useDispatcher = () => async (event: any) => {
     if (!Object.hasOwn(triggers, event.type)) {
         return;
     }
     await triggers[event.type](event);
 };
 
-exports.prepare = async () => {
+export const prepare = async () => {
     const client = useClient();
 
     const showStartupMessage = async () => {
+        // @ts-ignore
         const {displayName, basicId} = await client.getBotInfo();
         console.info(`LINE 身份：${displayName} (${basicId})`);
     };
@@ -26,4 +28,4 @@ exports.prepare = async () => {
     showStartupMessage();
 };
 
-exports.listen = () => {};
+export const listen = () => {};
