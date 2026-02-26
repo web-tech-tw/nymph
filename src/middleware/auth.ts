@@ -1,26 +1,36 @@
-"use strict";
 // Validate "Authorization" header, but it will not interrupt the request.
 
 // To interrupt the request which without the request,
 // please use "access.js" middleware.
 
 // Import isProduction
-const {isProduction} = require("../config");
+import {isProduction} from "../config.ts";
 
 // Import isObjectPropExists
-const {isObjectPropExists} = require("../utils/native");
+import {isObjectPropExists} from "../utils/native.ts";
 
-const saraTokenAuth = require("../utils/sara_token");
-const testTokenAuth = require("../utils/test_token");
+import * as saraTokenAuth from "../utils/sara_token.ts";
+import * as testTokenAuth from "../utils/test_token.ts";
+import type { Request, Response, NextFunction } from "express";
+
+// Define a custom interface for Request with auth
+export interface AuthRequest extends Request {
+    auth?: {
+        id: string | null;
+        method: string;
+        secret: string;
+        metadata: any;
+    };
+}
 
 // Import authMethods
-const authMethods = {
+const authMethods: Record<string, (token: string) => Promise<any> | any> = {
     "SARA": saraTokenAuth.validate,
     "TEST": testTokenAuth.validate,
 };
 
 // Export (function)
-module.exports = async (req, _, next) => {
+export default async (req: AuthRequest, _: Response, next: NextFunction) => {
     const authCode = req.header("authorization");
     if (!authCode) {
         next();
