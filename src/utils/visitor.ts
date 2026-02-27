@@ -8,7 +8,7 @@ export function getIPAddress(req: Request): string {
     if (!isProduction()) {
         return "127.0.0.1";
     }
-    return req.ip;
+    return req.ip ?? "Unknown";
 }
 
 export function getUserAgent(req: Request, isShort = false): string {

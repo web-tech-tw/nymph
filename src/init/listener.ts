@@ -23,10 +23,10 @@ export const listeners: Record<string, any> = {
     [PLATFORM_DISCORD]: discord,
 };
 
-export const prepare = () => {
+export const prepare = async () => {
     for (const platform of Object.keys(isEnabled)) {
         if (isEnabled[platform]) {
-            listeners[platform].prepare();
+            await listeners[platform].prepare();
         }
     }
 };
