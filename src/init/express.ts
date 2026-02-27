@@ -1,14 +1,20 @@
-"use strict";
 // express.js is a web framework.
 
 // Import config
-const {getSplited, getEnabled} = require("../config");
+import {getSplited, getEnabled} from "../config.ts";
 
 // Import express.js
-const express = require("express");
+import express from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 
 // Create middleware handlers
-const middlewareAuth = require("../middleware/auth");
+import middlewareAuth from "../middleware/auth.ts";
+
+import {join as pathJoin} from "node:path";
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = pathJoin(__filename, "..");
 
 // Initialize app engine
 const app = express();
@@ -34,27 +40,27 @@ if (trustProxy.length) {
 
 // Optional middleware
 if (isEnabledRedirectHttpHttps) {
-    const middlewareHttpsRedirect = require("../middleware/https_redirect");
+    const middlewareHttpsRedirect = (await import("../middleware/https_redirect.ts")).default;
     // Do https redirects
     app.use(middlewareHttpsRedirect);
 }
 if (isEnabledCors) {
-    const middlewareCORS = require("../middleware/cors");
+    const middlewareCORS = (await import("../middleware/cors.ts")).default;
     // Do CORS handles
     app.use(middlewareCORS);
 }
 if (isEnabledCors && isEnabledCorsOriginCheck) {
-    const middlewareOrigin = require("../middleware/origin");
+    const middlewareOrigin = (await import("../middleware/origin.ts")).default;
     // Check header "Origin" for CORS
     app.use(middlewareOrigin);
 }
 
 // Export useFunction
-exports.useApp = () => app;
+export const useApp = () => app;
 
 // Export withAwait
-exports.withAwait = (fn) => (req, res, next) =>
+export const withAwait = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => (req: Request, res: Response, next: NextFunction) =>
     Promise.resolve(fn(req, res, next)).catch(next);
 
 // Export express for shortcut
-exports.express = express;
+export { express };

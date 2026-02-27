@@ -1,24 +1,29 @@
-"use strict";
-
 // Import config
-const {getMust, getSplited} = require("./config");
+import {getMust, getSplited} from "./config.ts";
 
 // Import modules
-const fs = require("node:fs");
-const http = require("node:http");
-const https = require("node:https");
+import fs from "node:fs";
+import http from "node:http";
+import https from "node:https";
+import type { Express } from "express";
 
 // Import event listener
-const {
-    listen: startListenEvents,
-} = require("./init/listener");
+import {
+    listen as startListenEvents,
+} from "./init/listener.ts";
+
+interface ProtocolInfo {
+    protocol: string;
+    hostname: string;
+    port: number;
+}
 
 /**
  * Setup protocol - http
  * @param {object} app
  * @param {function} callback
  */
-function setupHttpProtocol(app, callback) {
+function setupHttpProtocol(app: Express, callback: (info: ProtocolInfo) => void) {
     const options = {};
     const httpServer = http.createServer(options, app);
     const port = parseInt(getMust("HTTP_PORT"));
@@ -31,7 +36,7 @@ function setupHttpProtocol(app, callback) {
  * @param {object} app
  * @param {function} callback
  */
-function setupHttpsProtocol(app, callback) {
+function setupHttpsProtocol(app: Express, callback: (info: ProtocolInfo) => void) {
     const options = {
         key: fs.readFileSync(getMust("HTTPS_KEY_PATH")),
         cert: fs.readFileSync(getMust("HTTPS_CERT_PATH")),
@@ -43,7 +48,7 @@ function setupHttpsProtocol(app, callback) {
 }
 
 // Prepare application and detect protocols automatically
-module.exports = async function(app, prepareHandlers, callback) {
+export default async function(app: Express, prepareHandlers: (() => Promise<void>)[], callback: (info: ProtocolInfo) => void) {
     // Waiting for prepare handlers
     if (prepareHandlers.length > 0) {
         const preparingPromises = prepareHandlers.map((c) => c());
@@ -65,4 +70,4 @@ module.exports = async function(app, prepareHandlers, callback) {
 
     // Start event listener
     startListenEvents();
-};
+}
