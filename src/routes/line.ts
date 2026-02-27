@@ -20,7 +20,7 @@ const dispatcher = useDispatcher();
 const middlewareHandler = (req: Request, res: Response, next: NextFunction) => middleware(req, res, next);
 
 router.post("/webhook", middlewareHandler, (req: Request, res: Response) => {
-    // @ts-ignore
+    // @ts-expect-error - Express req.body type
     Promise.all(req.body.events.map(dispatcher))
         .then((result) => res.json(result))
         .catch((err) => {

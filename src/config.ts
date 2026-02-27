@@ -1,35 +1,3 @@
-
-// Import modules
-import {join as pathJoin} from "node:path";
-import {existsSync} from "node:fs";
-import { fileURLToPath } from 'node:url';
-import dotenv from "dotenv";
-
-/**
- * Load configs from system environment variables.
- */
-export function runLoader(): void {
-    // ESM doesn't have __dirname, need to construct it
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = pathJoin(__filename, ".."); // src/config.ts -> src/
-    const dotenvPath = pathJoin(__dirname, "..", ".env"); // src/../.env -> .env
-
-    const isDotEnvFileExists = existsSync(dotenvPath);
-    const isCustomDefined = get("APP_CONFIGURED") === "1";
-
-    if (!isDotEnvFileExists && !isCustomDefined) {
-        console.error(
-            "No '.env' file detected in app root.",
-            "If you're not using dotenv file,",
-            "set 'APP_CONFIGURED=1' into environment variables.",
-            "\n",
-        );
-        throw new Error(".env not exists");
-    }
-
-    dotenv.config();
-}
-
 /**
  * Check is production mode.
  * @module config

@@ -22,7 +22,7 @@ export default async (interaction: Interaction) => {
     if (actionName in allCommands) {
         allCommands[actionName].action(interaction);
     } else {
-        // @ts-ignore
+        // @ts-expect-error - Discord API type incompatibility
         await interaction.reply("無法存取該指令");
     }
 };
