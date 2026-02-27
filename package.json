@@ -8,9 +8,9 @@
   "type": "module",
   "main": "app.ts",
   "scripts": {
-    "export-openapi": "node --experimental-strip-types export_openapi.ts",
-    "dev": "node --watch --experimental-strip-types app.ts",
-    "start": "node --experimental-strip-types app.ts",
+    "export-openapi": "node export_openapi.ts",
+    "dev": "node --watch app.ts",
+    "start": "node app.ts",
     "lint": "eslint .",
     "type-check": "npx tsc --noEmit",
     "prepare": "husky install"
