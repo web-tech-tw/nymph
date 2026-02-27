@@ -19,7 +19,7 @@ import {
 } from "../../../clients/langchain.ts";
 
 import Room from "../../../models/room.ts";
-import type { Message, Client, TextChannel } from "discord.js";
+import type { Message, Client } from "discord.js";
 
 const prefix = "Nymph ";
 
@@ -47,7 +47,7 @@ const hey = (message: Message) => ({
  */
 const parseContent = (message: Message, client: Client): string => {
     // Replace mentions with usernames
-    // @ts-ignore
+    // @ts-expect-error - Discord.js type compatibility
     let content = message.content.replace(/<@!?\d+>/g, (mention) => {
         const userId = mention.replace(/<@!?|>/g, "");
         const user = client.users.cache.get(userId);
@@ -70,27 +70,27 @@ const parseContent = (message: Message, client: Client): string => {
  */
 const processChat = async (message: Message, content: string) => {
     if (!content) {
-        // @ts-ignore
+        // @ts-expect-error - Discord.js API type
         return hey(message).say("所收到的訊息意圖不明。");
     }
 
-    // @ts-ignore
+    // @ts-expect-error - Discord.js type compatibility
     await message.channel.sendTyping();
 
     try {
         const response = await chatWithAI(message.channel.id, content);
 
         if (!response?.trim()) {
-            // @ts-ignore
+            // @ts-expect-error - Discord.js type compatibility
             return hey(message).say("無法正常回覆，請換個說法試試。");
         }
 
         const snippets = sliceContent(response.trim(), 2000);
-        // @ts-ignore
+        // @ts-expect-error - forEach typing issue
         snippets.forEach((snippet) => hey(message).say(snippet));
     } catch (err) {
         console.error("Chat Error:", err);
-        // @ts-ignore
+        // @ts-expect-error - Discord.js error handling
         hey(message).say("思緒混亂，無法回覆。");
     }
 };
@@ -103,7 +103,7 @@ const processChat = async (message: Message, content: string) => {
  */
 const processTranslation = async (message: Message, content: string) => {
     try {
-        // @ts-ignore
+        // @ts-expect-error - Mongoose query type
         const roomRecord = await Room.findOne({
             platform: PLATFORM_DISCORD,
             roomId: message.channel.id,
@@ -122,7 +122,7 @@ const processTranslation = async (message: Message, content: string) => {
         );
 
         if (translated && translated !== content) {
-            // @ts-ignore
+            // @ts-expect-error - Discord.js type compatibility
             message.channel.send(`[譯] ${translated}`);
         }
     } catch (err) {
@@ -132,7 +132,7 @@ const processTranslation = async (message: Message, content: string) => {
 
 // Event handler for message creation
 export default async (message: Message) => {
-    // @ts-ignore
+    // @ts-expect-error - Discord client type compatibility
     const client = useClient() as Client; // Assuming useClient returns the client instance, cast to Client
 
     if (message.author.bot) return;

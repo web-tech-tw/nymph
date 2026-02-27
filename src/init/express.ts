@@ -5,22 +5,18 @@ import {getSplited, getEnabled} from "../config.ts";
 
 // Import express.js
 import express from "express";
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 
 // Create middleware handlers
-import middlewareAuth from "../middleware/auth.ts";
+// import middlewareAuth from "../middleware/auth.ts";
 
-import {join as pathJoin} from "node:path";
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = pathJoin(__filename, "..");
+const initDir = new URL(".", import.meta.url).pathname;
 
 // Initialize app engine
 const app = express();
 
 // Register global middleware
-app.use(middlewareAuth);
+// app.use(middlewareAuth);
 
 // Read config
 const trustProxy = getSplited("TRUST_PROXY", ",");
@@ -31,7 +27,7 @@ const isEnabledCorsOriginCheck = getEnabled("ENABLED_CORS_ORIGIN_CHECK");
 
 // ejs template engine
 app.set("view engine", "ejs");
-app.set("views", __dirname + "/../../views");
+app.set("views", initDir + "/../../views");
 
 // Optional settings
 if (trustProxy.length) {

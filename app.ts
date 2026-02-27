@@ -1,11 +1,10 @@
 // Import config
+import "./src/init/config.ts";
+
+// Import modules
 import {
-    runLoader,
     getEnvironmentOverview,
 } from "./src/config.ts";
-
-// Load config
-runLoader();
 
 // Import constants
 import * as constant from "./src/init/const.ts";
@@ -41,7 +40,7 @@ app.get("/robots.txt", (_, res) => {
 
 // Load router dispatcher
 import * as routerDispatcher from "./src/routes/index.ts";
-routerDispatcher.load();
+await routerDispatcher.load();
 
 // Show banner message
 (() => {
