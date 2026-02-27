@@ -5,18 +5,18 @@
   "author": "Taiwan Web Technology Promotion Organization",
   "homepage": "https://web-tech.tw",
   "license": "MIT",
-  "main": "app.js",
+  "type": "module",
+  "main": "app.ts",
   "scripts": {
-    "export-openapi": "node export_openapi.js",
-    "dev": "nodemon app.js",
-    "start": "node app.js",
-    "lint": "npx lint-staged",
-    "lint:es": "eslint \"*.js\" \"src/**/*.js\"",
-    "lint:es:fix": "eslint \"*.js\" \"src/**/*.js\" --fix",
+    "export-openapi": "node export_openapi.ts",
+    "dev": "node --watch app.ts",
+    "start": "node app.ts",
+    "lint": "eslint .",
+    "type-check": "npx tsc --noEmit",
     "prepare": "husky install"
   },
   "lint-staged": {
-    "*.js": "eslint"
+    "*.ts": "eslint"
   },
   "dependencies": {
     "@discordjs/rest": "^2.4.0",
@@ -54,13 +54,27 @@
   "devDependencies": {
     "@commitlint/cli": "^17.4.4",
     "@commitlint/config-conventional": "^17.4.4",
+    "@eslint/js": "^9.21.0",
+    "@types/cors": "^2.8.17",
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^22.13.5",
+    "@types/node-cache": "^4.2.5",
+    "@types/request-ip": "^0.0.41",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.7",
+    "@types/ua-parser-js": "^0.7.39",
     "cz-conventional-changelog": "^3.3.0",
-    "eslint": "^8.17.0",
+    "eslint": "^9.21.0",
     "eslint-config-google": "^0.14.0",
-    "eslint-plugin-jsdoc": "^48.2.3",
+    "eslint-plugin-jsdoc": "^50.6.3",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.0",
-    "nodemon": "^2.0.13"
+    "nodemon": "^2.0.13",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.1"
   },
   "config": {
     "commitizen": {

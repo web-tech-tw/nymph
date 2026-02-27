@@ -1,16 +1,18 @@
-"use strict";
 
-const {
+import {
     useClient,
     startSync,
-} = require("../../clients/matrix");
+} from "../../clients/matrix.ts";
 
-const triggers = {
-    "room.failed_decryption": require("./room/failed_decryption"),
-    "room.message": require("./room/message"),
+import failedDecryption from "./room/failed_decryption.ts";
+import message from "./room/message.ts";
+
+const triggers: Record<string, any> = {
+    "room.failed_decryption": failedDecryption,
+    "room.message": message,
 };
 
-exports.prepare = async () => {
+export const prepare = async () => {
     const client = await useClient();
 
     const showStartupMessage = async () => {
@@ -22,7 +24,7 @@ exports.prepare = async () => {
     await startSync();
 };
 
-exports.listen = async () => {
+export const listen = async () => {
     const client = await useClient();
     for (const [key, trigger] of Object.entries(triggers)) {
         client.on(key, trigger);
