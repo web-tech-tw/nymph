@@ -23,7 +23,7 @@ import {
     prepare as prepareListener,
 } from "./src/init/listener.ts";
 
-const prepareHandlers = [
+const prepareHandlers: (() => Promise<void>)[] = [
     prepareDatabase,
     prepareListener,
 ];

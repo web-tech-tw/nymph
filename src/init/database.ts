@@ -10,8 +10,9 @@ import database, { Mongoose } from "mongoose";
 database.set("strictQuery", true);
 
 // Connect to MongoDB
-export const prepare = () =>
-    database.connect(getMust("MONGODB_URI"));
+export const prepare = async () => {
+    await database.connect(getMust("MONGODB_URI"));
+};
 
 // Export as useFunction
 export const useDatabase = (): Mongoose => database;

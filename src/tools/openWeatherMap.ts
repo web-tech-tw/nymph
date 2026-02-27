@@ -42,7 +42,7 @@ async function _normalizeLocation(apiKey: string, locationName: string) {
         key: apiKey,
     });
     const locationData = await client.getLocation({ locationName });
-    return locationData.name;
+    return locationData?.name ?? locationName;
 }
 
 export function createOpenWeatherMapQueryRun({ apiKey }: { apiKey: string }) {
