@@ -20,7 +20,6 @@ export default async (event: MessageEvent) => {
     const {
         type: sourceType,
     } = source;
-    // @ts-expect-error - LINE SDK type compatibility
     const {
         quoteToken,
         text: messageText,
@@ -40,7 +39,6 @@ export default async (event: MessageEvent) => {
     }
 
     if (!requestContent) {
-        // @ts-expect-error - LINE API type compatibility
         await client.replyMessage({
             replyToken,
             messages: [{
@@ -58,7 +56,6 @@ export default async (event: MessageEvent) => {
         responseContent = await chatWithAI(sourceId, requestContent);
     } catch (error) {
         console.error(error);
-        // @ts-expect-error - LINE API type compatibility
         await client.replyMessage({
             replyToken,
             messages: [{
@@ -72,7 +69,6 @@ export default async (event: MessageEvent) => {
 
     responseContent = responseContent.trim();
     if (!responseContent) {
-        // @ts-expect-error - LINE API type compatibility
         await client.replyMessage({
             replyToken,
             messages: [{

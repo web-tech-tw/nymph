@@ -72,8 +72,9 @@ const processChat = async (message: Message, content: string) => {
         return hey(message).say("所收到的訊息意圖不明。");
     }
 
-    // @ts-expect-error - Discord.js type compatibility
-    await message.channel.sendTyping();
+    if ("sendTyping" in message.channel) {
+        await message.channel.sendTyping();
+    }
 
     try {
         const response = await chatWithAI(message.channel.id, content);
@@ -115,8 +116,7 @@ const processTranslation = async (message: Message, content: string) => {
             content, langs || undefined,
         );
 
-        if (translated && translated !== content) {
-            // @ts-expect-error - Discord.js type compatibility
+        if (translated && translated !== content && "send" in message.channel) {
             message.channel.send(`🌐> ${translated}`);
         }
     } catch (err) {

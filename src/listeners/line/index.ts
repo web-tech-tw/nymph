@@ -20,7 +20,6 @@ export const prepare = async () => {
     const client = useClient();
 
     const showStartupMessage = async () => {
-        // @ts-expect-error - LINE SDK type compatibility
         const {displayName, basicId} = await client.getBotInfo();
         console.info(`LINE 身份：${displayName} (${basicId})`);
     };
