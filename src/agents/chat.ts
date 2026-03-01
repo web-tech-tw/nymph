@@ -7,6 +7,7 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { DynamicStructuredTool } from "@langchain/community/tools/dynamic";
 
 import {
+    createCodeExecution,
     createCurrentDateTime,
     createKnowledgeDocs,
     createOpenWeatherMap,
@@ -29,12 +30,16 @@ export function useModel(): ChatOpenAI {
 }
 
 interface ToolAgentOptions {
+    codeExecution?: { enabled?: boolean };
     openWeatherMap?: { enabled?: boolean; config?: { apiKey?: string } };
     knowledgeDocs?: { enabled?: boolean; config?: { googleApiKey?: string; googleOptions?: Record<string, unknown> } };
 }
 
 function getDefaultToolOptions(): ToolAgentOptions {
     return {
+        codeExecution: {
+            enabled: env("TOOL_CODE_EXECUTION_ENABLED") === "yes",
+        },
         openWeatherMap: {
             enabled: env("TOOL_OPEN_WEATHER_MAP_QUERY_RUN_ENABLED") === "yes",
             config: { apiKey: env("TOOL_OPEN_WEATHER_MAP_API_KEY") ?? undefined },
@@ -51,6 +56,10 @@ function getDefaultToolOptions(): ToolAgentOptions {
 
 function collectTools(opts: ToolAgentOptions = getDefaultToolOptions()): DynamicStructuredTool[] {
     const tools: DynamicStructuredTool[] = [createCurrentDateTime()];
+
+    if (opts.codeExecution?.enabled) {
+        tools.push(createCodeExecution());
+    }
 
     if (opts.openWeatherMap?.enabled && opts.openWeatherMap.config?.apiKey) {
         tools.push(createOpenWeatherMap({ apiKey: opts.openWeatherMap.config.apiKey }));
