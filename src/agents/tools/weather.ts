@@ -1,41 +1,25 @@
 import { DynamicStructuredTool } from "@langchain/community/tools/dynamic";
 import { z } from "zod";
-import { OpenWeatherAPI } from "openweather-api-node";
+import { OpenWeatherAPI, type CurrentWeather } from "openweather-api-node";
 
 interface WeatherConfig {
     apiKey: string;
 }
 
-interface WeatherDescription {
-    main?: string;
-    description?: string;
-    icon?: string;
-}
-
-interface WeatherObservation {
-    dt: string;
-    weather: WeatherDescription;
-    wind: { speed?: number; deg?: number };
-    humidity?: number;
-    temp: { cur?: number; min?: number; max?: number };
-    feelsLike: { cur?: number };
-    rain?: number;
-    clouds?: number;
-}
-
-function formatWeather(location: string, obs: WeatherObservation): string {
+function formatWeather(location: string, obs: CurrentWeather): string {
+    const { weather, dt } = obs;
     return [
         `In ${location},`,
         "the latest report of weather is as follows:",
-        `Datetime: ${obs.dt}`,
-        `Description: ${obs.weather.description ?? "N/A"}`,
-        `Wind speed: ${obs.wind.speed ?? "N/A"} m/s, direction: ${obs.wind.deg ?? "N/A"}°`,
-        `Humidity: ${obs.humidity ?? "N/A"}%`,
+        `Datetime: ${dt.toISOString()}`,
+        `Description: ${weather.description ?? "N/A"}`,
+        `Wind speed: ${weather.wind.speed ?? "N/A"} m/s, direction: ${weather.wind.deg ?? "N/A"}°`,
+        `Humidity: ${weather.humidity ?? "N/A"}%`,
         "Temperature:",
-        `- Current: ${obs.temp.cur ?? "N/A"}°C`,
-        `- Feels like: ${obs.feelsLike.cur ?? "N/A"}°C`,
-        `Rain: ${obs.rain ?? "N/A"}`,
-        `Cloud cover: ${obs.clouds ?? "N/A"}%`,
+        `- Current: ${weather.temp.cur ?? "N/A"}°C`,
+        `- Feels like: ${weather.feelsLike.cur ?? "N/A"}°C`,
+        `Rain: ${weather.rain ?? "N/A"}`,
+        `Cloud cover: ${weather.clouds ?? "N/A"}%`,
     ].join("\n");
 }
 
@@ -57,7 +41,7 @@ export function createOpenWeatherMap(config: WeatherConfig): DynamicStructuredTo
 
                 const client = new OpenWeatherAPI({ key: apiKey, units: "metric", locationName: location });
                 const observation = await client.getCurrent();
-                return formatWeather(location, observation as unknown as WeatherObservation);
+                return formatWeather(location, observation);
             } catch (error) {
                 console.error("Error fetching weather data:", error);
                 return "Error fetching weather data";
