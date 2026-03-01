@@ -2,6 +2,8 @@
 
 Nymph 是一個由 AI 驅動的多功能自動化機器人，旨在協助自動化資源管理、活動監控以及提供即時支援。
 
+![Nymph Avatar](public/avatar.png)
+
 ## 主要功能
 
 * **多平台整合**：支援 Line, Discord, Matrix 的訊息監聽與串接。
