@@ -11,6 +11,9 @@ const viewsDir = new URL("../../views", import.meta.url).pathname;
 app.set("view engine", "ejs");
 app.set("views", viewsDir);
 
+const publicDir = new URL("../../public", import.meta.url).pathname;
+app.use(express.static(publicDir));
+
 const trustProxy = envList("TRUST_PROXY", ",");
 if (trustProxy.length) app.set("trust proxy", trustProxy);
 
