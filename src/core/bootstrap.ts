@@ -1,4 +1,4 @@
-import { getEnvironmentOverview, env } from "../config/index.ts";
+import { getEnvironmentOverview, env, envRequired } from "../config/index.ts";
 import { APP_NAME } from "../constants.ts";
 import { connectDatabase } from "../database/connection.ts";
 import { registerPlatform, prepareAll, listenAll } from "../platforms/registry.ts";
@@ -9,7 +9,8 @@ import { startServer } from "./server.ts";
 export async function bootstrap(): Promise<void> {
     const app = useApp();
 
-    app.get("/", (_, res) => res.render("index"));
+    const baseUrl = envRequired("VIEWS_BASE_URL");
+    app.get("/", (_, res) => res.render("index", { baseUrl }));
     app.get("/robots.txt", (_, res) => res.type("txt").send("User-agent: *\nDisallow: /"));
 
     await loadRoutes();
