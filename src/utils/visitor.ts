@@ -1,28 +1,18 @@
-// The simple toolbox for fetch visitor information from HTTP request.
-
-import { isProduction } from "../config.ts";
+import { isProduction } from "../config/index.ts";
 import uaParser from "ua-parser-js";
 import type { Request } from "express";
 
 export function getIPAddress(req: Request): string {
-    if (!isProduction()) {
-        return "127.0.0.1";
-    }
-    return req.ip ?? "Unknown";
+    return isProduction() ? (req.ip ?? "Unknown") : "127.0.0.1";
 }
 
-export function getUserAgent(req: Request, isShort = false): string {
-    const userAgent = req.header("user-agent");
-    if (!userAgent) {
-        return "Unknown";
-    }
+export function getUserAgent(req: Request, short = false): string {
+    const raw = req.header("user-agent");
+    if (!raw) return "Unknown";
+    if (!short) return raw;
 
-    if (!isShort) {
-        return userAgent;
-    }
-
-    const uaParsed = uaParser(userAgent);
-    const { name: browserName } = uaParsed.browser;
-    const { name: osName } = uaParsed.os;
-    return [browserName, osName].join(" ");
+    const parsed = uaParser(raw);
+    const { name: browserName } = parsed.browser;
+    const { name: osName } = parsed.os;
+    return [browserName, osName].filter(Boolean).join(" ");
 }
