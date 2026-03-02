@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { env, envRequired } from "../config/index.ts";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { RedisChatMessageHistory } from "@langchain/redis";
@@ -23,7 +25,10 @@ const model = new ChatOpenAI({
     temperature: 0.63,
 });
 
-const systemPrompt = envRequired("OPENAI_SYSTEM_PROMPT");
+const systemPrompt = readFileSync(
+    fileURLToPath(new URL("../../settings.xml", import.meta.url)),
+    "utf-8",
+).trim();
 const redisUri = envRequired("REDIS_URI");
 
 export function useModel(): ChatOpenAI {
