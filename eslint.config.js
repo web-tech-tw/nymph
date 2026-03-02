@@ -9,8 +9,7 @@ export default [
             "build",
             ".git",
             "*.config.js",
-            "export_openapi.js",
-            "nodemon.json"
+            "export_openapi.js"
         ]
     },
     js.configs.recommended,
