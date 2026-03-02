@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { envList, envEnabled } from "../config/index.ts";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
@@ -7,11 +8,11 @@ export { express };
 
 const app = express();
 
-const viewsDir = new URL("../../views", import.meta.url).pathname;
+const viewsDir = fileURLToPath(new URL("../../views", import.meta.url));
 app.set("view engine", "ejs");
 app.set("views", viewsDir);
 
-const publicDir = new URL("../../public", import.meta.url).pathname;
+const publicDir = fileURLToPath(new URL("../../public", import.meta.url));
 app.use(express.static(publicDir));
 
 const trustProxy = envList("TRUST_PROXY", ",");

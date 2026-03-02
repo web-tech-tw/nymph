@@ -6,10 +6,11 @@ import {
     APP_AUTHOR_NAME,
     APP_AUTHOR_URL,
 } from "../../constants.ts";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import swaggerJSDoc from "swagger-jsdoc";
 
-const routesDir = new URL(".", import.meta.url).pathname;
+const routesDir = fileURLToPath(new URL(".", import.meta.url));
 
 export async function useApiDoc() {
     const options = {

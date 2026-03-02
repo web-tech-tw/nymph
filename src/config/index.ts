@@ -1,9 +1,8 @@
-import { join as pathJoin } from "node:path";
+import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import dotenv from "dotenv";
 
-const projectRoot = new URL("../..", import.meta.url).pathname;
-const dotenvPath = pathJoin(projectRoot, ".env");
+const dotenvPath = fileURLToPath(new URL("../../.env", import.meta.url));
 
 if (!existsSync(dotenvPath) && process.env.APP_CONFIGURED !== "1") {
     throw new Error(

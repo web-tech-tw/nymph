@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Platform } from "../types.ts";
 import type { RelayEntry } from "../types.ts";
 import { useDiscordClient } from "../platforms/discord/client.ts";
 import { useMatrixClient } from "../platforms/matrix/client.ts";
 
-const relayMapPath = join(new URL(".", import.meta.url).pathname, "../../relay.json");
+const relayMapPath = fileURLToPath(new URL("../../relay.json", import.meta.url));
 const relayMap: RelayEntry[] = JSON.parse(readFileSync(relayMapPath, "utf-8"));
 
 function findRelay(platform: Platform, roomId: string): RelayEntry | undefined {
