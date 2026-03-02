@@ -11,6 +11,7 @@ import {
     createCurrentDateTime,
     createKnowledgeDocs,
     createOpenWeatherMap,
+    createTavilySearch,
 } from "./tools/index.ts";
 
 const model = new ChatOpenAI({
@@ -33,6 +34,7 @@ interface ToolAgentOptions {
     codeExecution?: { enabled?: boolean };
     openWeatherMap?: { enabled?: boolean; config?: { apiKey?: string } };
     knowledgeDocs?: { enabled?: boolean; config?: { googleApiKey?: string; googleOptions?: Record<string, unknown> } };
+    tavilySearch?: { enabled?: boolean; config?: { apiKey?: string } };
 }
 
 function getDefaultToolOptions(): ToolAgentOptions {
@@ -50,6 +52,10 @@ function getDefaultToolOptions(): ToolAgentOptions {
                 googleApiKey: env("TOOL_KNOWLEDGE_DOCS_GOOGLE_API_KEY") ?? undefined,
                 googleOptions: JSON.parse(env("TOOL_KNOWLEDGE_DOCS_GOOGLE_OPTIONS") || "{}") as Record<string, unknown>,
             },
+        },
+        tavilySearch: {
+            enabled: env("TOOL_TAVILY_SEARCH_ENABLED") === "yes",
+            config: { apiKey: env("TOOL_TAVILY_SEARCH_API_KEY") ?? undefined },
         },
     };
 }
@@ -70,6 +76,11 @@ function collectTools(opts: ToolAgentOptions = getDefaultToolOptions()): Dynamic
             googleApiKey: opts.knowledgeDocs.config.googleApiKey,
             googleOptions: opts.knowledgeDocs.config.googleOptions,
         }));
+    }
+
+    if (opts.tavilySearch?.enabled) {
+        const tavilyTool = createTavilySearch(opts.tavilySearch.config?.apiKey);
+        if (tavilyTool) tools.push(tavilyTool);
     }
 
     return tools;
