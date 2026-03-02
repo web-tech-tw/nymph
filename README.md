@@ -46,8 +46,9 @@ npm run test
 * `OPENAI_BASE_URL` — OpenAI API 網址
 * `OPENAI_API_KEY` — OpenAI API 金鑰
 * `OPENAI_MODEL_NAME` — 模型名稱 (例如 `gpt-4o`)
-* `OPENAI_SYSTEM_PROMPT` — Agent 的系統提示詞 (System Prompt)
 * `REDIS_URI` — Redis 連線字串
+
+> Agent 的系統提示詞 (System Prompt) 請直接編輯專案根目錄的 `settings.xml` 進行版控管理。
 
 **平台整合 (選填，視需求啟用)：**
 
@@ -62,7 +63,6 @@ NODE_ENV=development
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_API_KEY=your_api_key_here
 OPENAI_MODEL_NAME=gpt-4o
-OPENAI_SYSTEM_PROMPT=You are an assistant.
 REDIS_URI=redis://localhost:6379
 
 ```
