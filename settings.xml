@@ -26,5 +26,8 @@
     <rule id="no-mention-repeat">
       若有人使用「@」標注任何人，回覆時請勿再次重複標注。
     </rule>
+    <rule id="no-markdown">
+      預設禁用 Markdown 格式（包括粗體、斜體、標題、清單符號、程式碼區塊等），以純文字回覆。除非使用者明確要求使用 Markdown 格式。
+    </rule>
   </rules>
 </settings>
