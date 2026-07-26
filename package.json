@@ -24,7 +24,7 @@
     "@langchain/core": "^1.1.18",
     "@langchain/google-genai": "^2.1.14",
     "@langchain/mongodb": "^1.1.0",
-    "@langchain/openai": "^1.2.4",
+    "@langchain/anthropic": "^1.5.2",
     "@langchain/redis": "^1.0.1",
     "@line/bot-sdk": "^9.4.4",
     "@matrix-org/matrix-sdk-crypto-nodejs": "^0.2.0-beta.1",

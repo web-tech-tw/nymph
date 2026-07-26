@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { env, envRequired } from "../config/index.ts";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { RedisChatMessageHistory } from "@langchain/redis";
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { DynamicStructuredTool } from "@langchain/community/tools/dynamic";
@@ -16,12 +16,9 @@ import {
     createTavilySearch,
 } from "./tools/index.ts";
 
-const model = new ChatOpenAI({
-    configuration: {
-        apiKey: envRequired("OPENAI_API_KEY"),
-        baseURL: envRequired("OPENAI_BASE_URL"),
-    },
-    modelName: envRequired("OPENAI_MODEL_NAME"),
+const model = new ChatAnthropic({
+    apiKey: envRequired("ANTHROPIC_API_KEY"),
+    model: envRequired("ANTHROPIC_MODEL"),
     temperature: 0.63,
 });
 
@@ -31,7 +28,7 @@ const systemPrompt = readFileSync(
 ).trim();
 const redisUri = envRequired("REDIS_URI");
 
-export function useModel(): ChatOpenAI {
+export function useModel(): ChatAnthropic {
     return model;
 }
 
