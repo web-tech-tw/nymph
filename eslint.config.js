@@ -9,6 +9,7 @@ export default [
             "build",
             ".git",
             "*.config.js",
+            "*.config.cjs",
             "export_openapi.js"
         ]
     },
