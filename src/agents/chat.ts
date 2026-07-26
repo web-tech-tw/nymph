@@ -19,7 +19,6 @@ import {
 const model = new ChatAnthropic({
     apiKey: envRequired("ANTHROPIC_API_KEY"),
     model: envRequired("ANTHROPIC_MODEL"),
-    temperature: 0.63,
 });
 
 const systemPrompt = readFileSync(
