@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { env, envRequired } from "../config/index.ts";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { RedisChatMessageHistory } from "@langchain/redis";
+import { createAgent } from "langchain";
+import { getMongoClient } from "../database/connection.ts";
+import { MongoDBChatMessageHistory } from "@langchain/mongodb";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
@@ -25,7 +26,6 @@ const systemPrompt = readFileSync(
     fileURLToPath(new URL("../../settings.xml", import.meta.url)),
     "utf-8",
 ).trim();
-const redisUri = envRequired("REDIS_URI");
 
 export function useModel(): ChatAnthropic {
     return model;
@@ -88,17 +88,17 @@ function collectTools(opts: ToolAgentOptions = getDefaultToolOptions()): Dynamic
 }
 
 export async function chatWithAI(chatId: string, humanInput: string, opts?: ToolAgentOptions): Promise<string> {
-    const history = new RedisChatMessageHistory({
-        config: { url: redisUri },
+    const collection = getMongoClient().db().collection("chat_messages");
+    const history = new MongoDBChatMessageHistory({
+        collection,
         sessionId: `nymph:agent:${chatId}`,
-        sessionTTL: 150,
     });
 
     const historyMessages = await history.getMessages();
     const messages: BaseMessage[] = [new SystemMessage(systemPrompt), ...historyMessages, new HumanMessage(humanInput)];
 
     const tools = collectTools(opts);
-    const agent = createReactAgent({ llm: model, tools });
+    const agent = createAgent({ model, tools });
     const { messages: responseMessages } = await agent.invoke({ messages }) as { messages: BaseMessage[] };
     const aiMsg = responseMessages.findLast((m): m is AIMessage => m instanceof AIMessage);
 

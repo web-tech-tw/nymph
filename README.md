@@ -8,13 +8,13 @@ Nymph 是一個由 AI 驅動的多功能自動化機器人，旨在協助自動�
 
 * **多平台整合**：支援 Line, Discord, Matrix 的訊息監聽與串接。
 * **AI Agent 核心**：整合 Anthropic Claude (透過 LangChain)，提供智慧對話與翻譯功能。
-* **對話記憶**：基於 Redis 儲存對話歷史，支援上下文理解。
+* **對話記憶**：基於 MongoDB 儲存對話歷史，支援上下文理解。
 * **開發友善**：支援 OpenAPI 文件匯出，並內建 Dockerfile 以利容器化部署。
 
 ## 系統需求
 
 * Node.js >= 20
-* Redis (用於儲存對話記憶)
+* MongoDB (用於資料庫與儲存對話記憶)
 * Anthropic 帳戶與 API Key
 
 ## 快速開始
@@ -44,8 +44,8 @@ npm run test
 **核心設定 (AI 功能必填)：**
 
 * `ANTHROPIC_API_KEY` — Anthropic API 金鑰
-* `ANTHROPIC_MODEL` — 模型名稱 (例如 `claude-3-5-sonnet-20241022`)
-* `REDIS_URI` — Redis 連線字串
+* `ANTHROPIC_MODEL` — 模型名稱 (例如 `claude-sonnet-5`)
+* `MONGODB_URI` — MongoDB 連線字串 (例如 `mongodb://localhost:27017/app`)
 
 > Agent 的系統提示詞 (System Prompt) 請直接編輯專案根目錄的 `settings.xml` 進行版控管理。
 
@@ -61,7 +61,7 @@ npm run test
 NODE_ENV=development
 ANTHROPIC_API_KEY=your_api_key_here
 ANTHROPIC_MODEL=claude-sonnet-5
-REDIS_URI=redis://localhost:6379
+MONGODB_URI=mongodb://localhost:27017/app
 ```
 
 ## 專案結構
