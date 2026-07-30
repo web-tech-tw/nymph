@@ -1,9 +1,9 @@
 import { getEnvironmentOverview, env, envRequired } from "../config/index.ts";
 import { APP_NAME } from "../constants.ts";
-import { connectDatabase } from "../database/connection.ts";
+import { connectDatabase } from "../databases/connection.ts";
 import { registerPlatform, prepareAll, listenAll } from "../platforms/registry.ts";
-import { useApp } from "../http/app.ts";
-import { loadRoutes } from "../http/routes/index.ts";
+import { useApp } from "../servers/app.ts";
+import { loadRoutes } from "../servers/routes/index.ts";
 import { startServer } from "./server.ts";
 
 export async function bootstrap(): Promise<void> {

@@ -4,9 +4,9 @@ import { useDiscordClient } from "./client.ts";
 import { registerCommands, resolveCommand } from "./commands.ts";
 import { Platform } from "../../types.ts";
 import { COMMAND_PREFIX } from "../../constants.ts";
-import { hasRelay, relayText, sendText } from "../../bridge/index.ts";
+import { hasRelay, relayText, sendText } from "../../bridges/index.ts";
 import { chatWithAI, sliceContent, translateText } from "../../agents/chat.ts";
-import { Room } from "../../database/models/room.ts";
+import { Room } from "../../databases/models/room.ts";
 import type { PlatformAdapter } from "../types.ts";
 
 function say(message: Message, text: string): void {
