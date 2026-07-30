@@ -1,4 +1,4 @@
-import { envRequired } from "../../config/index.ts";
+import { get } from "../../config.ts";
 import axios from "axios";
 import { StatusCodes } from "http-status-codes";
 import jwt from "jsonwebtoken";
@@ -9,14 +9,14 @@ import type { TokenValidationResult, AuthMetadata } from "../../types.ts";
 const issuerIdentity = "Sara Hoshikawa";
 
 const client = axios.create({
-    baseURL: envRequired("SARA_RECV_HOST"),
+    baseURL: get("SARA_RECV_HOST", "http://localhost:3000"),
     headers: { "User-Agent": "sara_client/2.0" },
 });
 
 const verifyOptions = {
     algorithms: ["ES256"] as jwt.Algorithm[],
     issuer: issuerIdentity,
-    audience: envRequired("SARA_AUDIENCE_URL"),
+    audience: get("SARA_AUDIENCE_URL", "http://localhost:3000"),
     complete: true,
 };
 

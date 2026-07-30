@@ -50,7 +50,9 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.2",
     "tavily": "^1.0.2",
+    "toml": "^5.0.0",
     "ua-parser-js": "^1.0.39",
+    "yaml": "^2.9.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import { isProduction } from "../config/index.ts";
+import { isProduction } from "../config.ts";
 import uaParser from "ua-parser-js";
 import type { Request } from "express";
 

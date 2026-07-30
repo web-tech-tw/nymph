@@ -1,4 +1,4 @@
-import { isProduction } from "../../config/index.ts";
+import { isProduction } from "../../config.ts";
 import type { TokenValidationResult, AuthMetadata, UserProfile } from "../../types.ts";
 
 const DEFAULT_FAKE_USER: UserProfile = {
