@@ -12,6 +12,7 @@
     "dev": "node --watch app.ts",
     "start": "node app.ts",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "type-check": "npx tsc --noEmit",
     "prepare": "husky install"
   },
