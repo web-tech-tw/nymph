@@ -3,7 +3,7 @@ import { z } from "zod";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
 import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
-import { getDatabase } from "../../databases/connection.ts";
+import mongoose from "mongoose";
 
 interface KnowledgeDocsConfig {
     googleApiKey: string;
@@ -60,7 +60,7 @@ export function createKnowledgeDocs(config: KnowledgeDocsConfig): DynamicStructu
             const query = input?.trim();
             if (!query) return "Error: Please provide a search query.";
 
-            const db = getDatabase();
+            const db = mongoose;
             if (!db.connection?.db) return "Error: MongoDB connection not ready.";
 
             const client = db.connection.getClient();

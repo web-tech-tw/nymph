@@ -1,9 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 
 export const Platform = {
-    Discord: "Discord",
-    LINE: "LINE",
-    Matrix: "Matrix",
+    Discord: "discord",
+    LINE: "line",
+    Matrix: "matrix",
 } as const;
 
 export type Platform = (typeof Platform)[keyof typeof Platform];

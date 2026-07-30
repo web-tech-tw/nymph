@@ -1,6 +1,6 @@
 # App config files
 keypair_*
-.env
+config.yaml
 prompts.json
 bridges.json
 relay.json

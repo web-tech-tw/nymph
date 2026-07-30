@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { env, envRequired } from "../config/index.ts";
+import { getOptional, getEnabled } from "../config.ts";
 import { createAgent } from "langchain";
-import { getMongoClient } from "../databases/connection.ts";
+import { getMongoClient } from "../memory.ts";
 import { MongoDBChatMessageHistory } from "@langchain/mongodb";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
@@ -17,18 +17,21 @@ import {
     createTavilySearch,
 } from "./tools/index.ts";
 
-const model = new ChatAnthropic({
-    apiKey: envRequired("ANTHROPIC_API_KEY"),
-    model: envRequired("ANTHROPIC_MODEL"),
-});
+const settingsPath = fileURLToPath(new URL("../../settings.xml", import.meta.url));
+const systemPrompt = existsSync(settingsPath)
+    ? readFileSync(settingsPath, "utf-8").trim()
+    : "You are Nymph, an AI assistant.";
 
-const systemPrompt = readFileSync(
-    fileURLToPath(new URL("../../settings.xml", import.meta.url)),
-    "utf-8",
-).trim();
+let _model: ChatAnthropic | undefined;
 
 export function useModel(): ChatAnthropic {
-    return model;
+    if (!_model) {
+        _model = new ChatAnthropic({
+            apiKey: getOptional("ANTHROPIC_API_KEY") || "dummy",
+            model: getOptional("ANTHROPIC_MODEL") || "claude-3-5-sonnet-20241022",
+        });
+    }
+    return _model;
 }
 
 interface ToolAgentOptions {
@@ -41,22 +44,22 @@ interface ToolAgentOptions {
 function getDefaultToolOptions(): ToolAgentOptions {
     return {
         codeExecution: {
-            enabled: env("TOOL_CODE_EXECUTION_ENABLED") === "yes",
+            enabled: getEnabled("TOOL_CODE_EXECUTION_ENABLED"),
         },
         openWeatherMap: {
-            enabled: env("TOOL_OPEN_WEATHER_MAP_QUERY_RUN_ENABLED") === "yes",
-            config: { apiKey: env("TOOL_OPEN_WEATHER_MAP_API_KEY") ?? undefined },
+            enabled: getEnabled("TOOL_OPEN_WEATHER_MAP_QUERY_RUN_ENABLED"),
+            config: { apiKey: getOptional("TOOL_OPEN_WEATHER_MAP_API_KEY") },
         },
         knowledgeDocs: {
-            enabled: env("TOOL_KNOWLEDGE_DOCS_ENABLED") === "yes",
+            enabled: getEnabled("TOOL_KNOWLEDGE_DOCS_ENABLED"),
             config: {
-                googleApiKey: env("TOOL_KNOWLEDGE_DOCS_GOOGLE_API_KEY") ?? undefined,
-                googleOptions: JSON.parse(env("TOOL_KNOWLEDGE_DOCS_GOOGLE_OPTIONS") || "{}") as Record<string, unknown>,
+                googleApiKey: getOptional("TOOL_KNOWLEDGE_DOCS_GOOGLE_API_KEY"),
+                googleOptions: JSON.parse(getOptional("TOOL_KNOWLEDGE_DOCS_GOOGLE_OPTIONS") || "{}") as Record<string, unknown>,
             },
         },
         tavilySearch: {
-            enabled: env("TOOL_TAVILY_SEARCH_ENABLED") === "yes",
-            config: { apiKey: env("TOOL_TAVILY_SEARCH_API_KEY") ?? undefined },
+            enabled: getEnabled("TOOL_TAVILY_SEARCH_ENABLED"),
+            config: { apiKey: getOptional("TOOL_TAVILY_SEARCH_API_KEY") },
         },
     };
 }
@@ -98,7 +101,7 @@ export async function chatWithAI(chatId: string, humanInput: string, opts?: Tool
     const messages: BaseMessage[] = [new SystemMessage(systemPrompt), ...historyMessages, new HumanMessage(humanInput)];
 
     const tools = collectTools(opts);
-    const agent = createAgent({ model, tools });
+    const agent = createAgent({ model: useModel(), tools });
     const { messages: responseMessages } = await agent.invoke({ messages }) as { messages: BaseMessage[] };
     const aiMsg = responseMessages.findLast((m): m is AIMessage => m instanceof AIMessage);
 
