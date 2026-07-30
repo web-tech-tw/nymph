@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { env, envRequired } from "../config/index.ts";
 import { createAgent } from "langchain";
-import { getMongoClient } from "../database/connection.ts";
+import { getMongoClient } from "../databases/connection.ts";
 import { MongoDBChatMessageHistory } from "@langchain/mongodb";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";

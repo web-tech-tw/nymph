@@ -3,7 +3,7 @@ import { z } from "zod";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
 import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
-import { getDatabase } from "../../database/connection.ts";
+import { getDatabase } from "../../databases/connection.ts";
 
 interface KnowledgeDocsConfig {
     googleApiKey: string;

@@ -2,6 +2,7 @@
 keypair_*
 .env
 prompts.json
+bridges.json
 relay.json
 roles.json
 

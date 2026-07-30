@@ -6,7 +6,7 @@ import {
     RustSdkCryptoStorageProvider,
     SimpleFsStorageProvider,
 } from "matrix-bot-sdk";
-import { MatrixAccess } from "../../database/models/matrix-access.ts";
+import { MatrixAccess } from "../../databases/models/matrix-access.ts";
 
 const homeserverUrl = envRequired("MATRIX_HOMESERVER");
 const username = envRequired("MATRIX_USERNAME");

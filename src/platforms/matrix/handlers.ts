@@ -1,6 +1,6 @@
 import { useMatrixClient, fetchMatrixUserId, startMatrixSync } from "./client.ts";
 import { chatWithAI } from "../../agents/chat.ts";
-import { relayText, sendText } from "../../bridge/index.ts";
+import { relayText, sendText } from "../../bridges/index.ts";
 import { COMMAND_PREFIX } from "../../constants.ts";
 import { Platform } from "../../types.ts";
 import type { PlatformAdapter } from "../types.ts";

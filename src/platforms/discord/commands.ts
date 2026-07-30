@@ -3,7 +3,7 @@ import { useDiscordRest } from "./client.ts";
 import { Routes } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 import { Platform } from "../../types.ts";
-import { Room } from "../../database/models/room.ts";
+import { Room } from "../../databases/models/room.ts";
 
 interface CommandDef {
     description: string;
