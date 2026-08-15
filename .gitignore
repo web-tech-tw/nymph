@@ -1,25 +1,10 @@
-# App config files
-keypair_*
-config.yaml
-prompts.json
-bridges.json
-relay.json
-roles.json
-
-# App data files
-data/
-
 # Finder config file
 .DS_Store
-
-# OpenAPI exported file
-openapi_exported.json
 
 # Directories
 .nyc_output
 coverage
 node_modules
-ssl_keys
 dist
 
 # Log files
