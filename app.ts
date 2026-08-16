@@ -1,13 +1,16 @@
 import { Chat } from "./src/agents/chat";
+import { defaultTools } from "./src/agents/tools";
 import { GlobalProvider } from "./src/providers/global";
 import { DiscordProvider } from "./src/providers/discord";
 import { LineProvider } from "./src/providers/line";
+import { server } from "./src/routes";
 import type { ChatContext } from "./src/types/provider";
 
-const settingFile = Bun.file("./setting.xml");
+const settingsFile = Bun.file("./settings.xml");
 const chatAgnt = new Chat({
     model: Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5",
-    systemPrompt: await settingFile.text()
+    systemPrompt: await settingsFile.text(),
+    toolSet: defaultTools,
 });
 
 const providers = [
@@ -15,18 +18,23 @@ const providers = [
         token: Bun.env.DISCORD_TOKEN || "",
     }),
     new LineProvider({
-        token: Bun.env.LINE_TOKEN || "",
+        token: Bun.env.LINE_TOKEN || Bun.env.LINE_CHANNEL_ACCESS_TOKEN || "",
+        secret: Bun.env.LINE_SECRET || Bun.env.LINE_CHANNEL_SECRET || "",
+        server,
     }),
 ];
 
 const provider = new GlobalProvider(providers);
+
 provider.onMessage(async (ctx: ChatContext) => {
     const reply = await chatAgnt.replyMessage(ctx);
     await provider.sendText(ctx.platformName, ctx.roomId, reply);
 });
 
 provider.onCommand(async (_command, _args, ctx) => {
-    await provider.sendText(ctx.platformName, ctx.roomId, "Not implemented");
+    await provider.sendText(ctx.platformName, ctx.roomId, "Command is not implemented yet.");
 });
 
-provider.start();
+await provider.start();
+server.listen(Number(Bun.env.PORT || 3000));
+console.info(`[Nymph] HTTP Server listening on port ${Bun.env.PORT || 3000}`);
