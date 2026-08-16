@@ -12,9 +12,11 @@ export type CommandCallback = (command: string, args: string[], ctx: ChatContext
 export interface BaseGlobalProvider extends BaseProvider {
     sendText(platformName: PlatformName, roomId: string, content: string): void | Promise<void>;
 }
+
 export interface BasePlatformProvider extends BaseProvider {
     sendText(roomId: string, content: string): void | Promise<void>;
 }
+
 export interface BaseProvider {
     readonly name: PlatformName;
     readonly enabled: boolean;
