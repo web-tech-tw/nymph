@@ -1,18 +1,20 @@
 import { PlatformName } from "../types/provider";
 import type {
-    BaseProvider,
+    BasePlatformProvider,
     MessageCallback,
     CommandCallback
 } from "../types/provider";
 
-export class LineProvider implements BaseProvider {
-    readonly name: PlatformName = PlatformName.Discord;
+export interface LineProviderParams {
+    token: string;
+}
 
-    constructor() {
-    }
+export class LineProvider implements BasePlatformProvider {
+    readonly name: PlatformName = PlatformName.LINE;
+    readonly enabled: boolean;
 
-    async isEnabled(): Promise<boolean> {
-        return false;
+    constructor(params: LineProviderParams) {
+        this.enabled = params.token !== "";
     }
 
     async start(): Promise<void> {
@@ -28,6 +30,10 @@ export class LineProvider implements BaseProvider {
     }
 
     async onCommand(_cb: CommandCallback): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+
+    async sendText(_roomId: string, _content: string): Promise<void> {
         throw new Error("Method not implemented.");
     }
 }

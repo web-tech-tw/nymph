@@ -9,16 +9,11 @@ import type {
 export class GlobalProvider implements BaseGlobalProvider {
     readonly name: PlatformName = PlatformName.Global;
     readonly #providers: BasePlatformProvider[];
+    readonly enabled: boolean;
 
     constructor(providers: BasePlatformProvider[]) {
-        this.#providers = providers;
-    }
-
-    async isEnabled(): Promise<boolean> {
-        const results = await Promise.all(this.#providers.map(
-            (provider) => provider.isEnabled()
-        ));
-        return results.every((result) => result);
+        this.#providers = providers.filter((p) => p.enabled);
+        this.enabled = this.#providers.length > 0;
     }
 
     async start(): Promise<void> {
@@ -43,7 +38,7 @@ export class GlobalProvider implements BaseGlobalProvider {
 
     async sendText(platformName: PlatformName, roomId: string, content: string): Promise<void> {
         await Promise.all(this.#providers.filter((p) => (
-            p.name === platformName && p.isEnabled()
+            p.name === platformName
         )).map((provider) => (
             provider.sendText(roomId, content)
         )));
