@@ -10,7 +10,7 @@ export type MessageCallback = (ctx: ChatContext) => Promise<void>;
 export type CommandCallback = (command: string, args: string[], ctx: ChatContext) => Promise<void>;
 
 export interface BaseGlobalProvider extends BaseProvider {
-    sendText(platformName: PlatformName, roomId: string, content: string): void | Promise<void>;
+    sendText(roomId: string, content: string, platformName?: PlatformName): void | Promise<void>;
 }
 
 export interface BasePlatformProvider extends BaseProvider {
@@ -37,4 +37,5 @@ export interface ChatContext {
     roomId: string;
     sender: UserProfile;
     content: string;
+    reply(content: string): Promise<void>;
 }

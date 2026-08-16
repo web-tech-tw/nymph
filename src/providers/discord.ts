@@ -82,6 +82,9 @@ export class DiscordProvider implements BasePlatformProvider {
                     username: message.author.username,
                 },
                 content: cleanContent,
+                reply: async (text: string) => {
+                    await this.sendText(message.channel.id, text);
+                },
             };
 
             for (const cb of this.#messageCallbacks) {
