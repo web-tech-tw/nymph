@@ -1,18 +1,20 @@
 import { PlatformName } from "../types/provider";
 import type {
-    BaseProvider,
+    BasePlatformProvider,
     MessageCallback,
     CommandCallback
 } from "../types/provider";
 
-export class DiscordProvider implements BaseProvider {
+export interface DiscordProviderParams {
+    token: string;
+}
+
+export class DiscordProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.Discord;
+    readonly enabled: boolean;
 
-    constructor() {
-    }
-
-    async isEnabled(): Promise<boolean> {
-        return false;
+    constructor(params: DiscordProviderParams) {
+        this.enabled = params.token !== "";
     }
 
     async start(): Promise<void> {
@@ -28,6 +30,10 @@ export class DiscordProvider implements BaseProvider {
     }
 
     async onCommand(_cb: CommandCallback): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+
+    async sendText(_roomId: string, _content: string): Promise<void> {
         throw new Error("Method not implemented.");
     }
 }

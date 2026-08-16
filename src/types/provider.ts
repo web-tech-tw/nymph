@@ -17,7 +17,7 @@ export interface BasePlatformProvider extends BaseProvider {
 }
 export interface BaseProvider {
     readonly name: PlatformName;
-    isEnabled(): Promise<boolean>;
+    readonly enabled: boolean;
     start(): void | Promise<void>;
     stop(): void | Promise<void>;
     onMessage(cb: MessageCallback): void;
