@@ -7,7 +7,7 @@ import { server } from "./src/routes";
 import type { ChatContext } from "./src/types/provider";
 
 const settingsFile = Bun.file("./settings.xml");
-const chatAgnt = new Chat({
+const chatAgent = new Chat({
     model: Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5",
     systemPrompt: await settingsFile.text(),
     toolSet: defaultTools,
@@ -27,12 +27,12 @@ const providers = [
 const provider = new GlobalProvider(providers);
 
 provider.onMessage(async (ctx: ChatContext) => {
-    const reply = await chatAgnt.replyMessage(ctx);
-    await provider.sendText(ctx.platformName, ctx.roomId, reply);
+    const reply = await chatAgent.replyMessage(ctx);
+    await ctx.reply(reply);
 });
 
 provider.onCommand(async (_command, _args, ctx) => {
-    await provider.sendText(ctx.platformName, ctx.roomId, "Command is not implemented yet.");
+    await ctx.reply("Command is not implemented yet.");
 });
 
 await provider.start();

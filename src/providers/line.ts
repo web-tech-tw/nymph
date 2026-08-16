@@ -112,6 +112,9 @@ export class LineProvider implements BasePlatformProvider {
                 nickname: event.source?.userId ?? sourceId,
             },
             content,
+            reply: async (text: string) => {
+                await this.sendText(sourceId, text);
+            },
         };
 
         for (const cb of this.#messageCallbacks) {

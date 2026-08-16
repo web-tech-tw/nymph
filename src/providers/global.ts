@@ -36,9 +36,9 @@ export class GlobalProvider implements BaseGlobalProvider {
         this.#providers.forEach((provider) => provider.onCommand(cb));
     }
 
-    async sendText(platformName: PlatformName, roomId: string, content: string): Promise<void> {
+    async sendText(roomId: string, content: string, platformName?: PlatformName): Promise<void> {
         await Promise.all(this.#providers.filter((p) => (
-            p.name === platformName
+            platformName ? platformName === p.name : true
         )).map((provider) => (
             provider.sendText(roomId, content)
         )));
