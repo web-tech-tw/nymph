@@ -1,8 +1,9 @@
-import { PlatformName } from "../types/platform";
+import { PlatformName } from "../types/provider";
 import type {
     BaseProvider,
-    ChatContext,
-} from "../types/platform";
+    MessageCallback,
+    CommandCallback
+} from "../types/provider";
 
 export class DiscordProvider implements BaseProvider {
     readonly name: PlatformName = PlatformName.Discord;
@@ -22,11 +23,11 @@ export class DiscordProvider implements BaseProvider {
         throw new Error("Method not implemented.");
     }
 
-    async onMessage(_ctx: ChatContext): Promise<void> {
+    async onMessage(_cb: MessageCallback): Promise<void> {
         throw new Error("Method not implemented.");
     }
 
-    async onCommand(_command: string, _args: string[], _ctx: ChatContext): Promise<void> {
+    async onCommand(_cb: CommandCallback): Promise<void> {
         throw new Error("Method not implemented.");
     }
 }
