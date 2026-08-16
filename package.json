@@ -39,5 +39,12 @@
     "lint:check": "eslint . --max-warnings 0",
     "prepare": "husky install"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@line/bot-sdk": "^11.2.0",
+    "ai": "^7.0.66",
+    "dayjs": "^1.11.21",
+    "discord.js": "^14.27.0",
+    "elysia": "^1.4.29"
+  }
 }
