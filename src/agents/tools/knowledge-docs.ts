@@ -1,91 +1,117 @@
-import { DynamicStructuredTool } from "@langchain/community/tools/dynamic";
+import { tool } from "ai";
 import { z } from "zod";
-import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
-import { TaskType } from "@google/generative-ai";
-import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
-import { getDatabase } from "../../databases/connection.ts";
+import mongoose from "mongoose";
+import { isDatabaseConnected } from "../../databases/connection";
 
-interface KnowledgeDocsConfig {
-    googleApiKey: string;
-    googleOptions?: Record<string, unknown>;
+export interface KnowledgeDocsConfig {
+    defaultCollection?: string;
+    defaultIndex?: string;
+    defaultTextField?: string;
 }
 
-interface SearchDocument {
-    pageContent?: string;
-    text?: string;
-    metadata?: Record<string, unknown>;
-}
+export function toolKnowledgeDocs(config?: KnowledgeDocsConfig) {
+    const defaultCollection = config?.defaultCollection || "knowledge";
+    const defaultIndex = config?.defaultIndex || "default";
+    const defaultTextField = config?.defaultTextField || "text";
 
-function createEmbeddings(apiKey: string, options: Record<string, unknown> = {}): GoogleGenerativeAIEmbeddings {
-    const model = (options.model as string) ?? "text-embedding-004";
-    const taskType = ((options.taskType as string) ?? "RETRIEVAL_DOCUMENT") as TaskType;
-    return new GoogleGenerativeAIEmbeddings({ apiKey, model, taskType, ...options });
-}
-
-function formatResults(results: Array<[SearchDocument, number]>): string {
-    return results
-        .map(([doc, score], i) => {
-            const text = doc.pageContent ?? doc.text ?? "";
-            const meta = JSON.stringify(doc.metadata ?? {});
-            return `${i + 1}. Score=${score.toFixed(4)}\nText: ${text}\nMetadata: ${meta}`;
-        })
-        .join("\n\n");
-}
-
-export function createKnowledgeDocs(config: KnowledgeDocsConfig): DynamicStructuredTool {
-    const { googleApiKey, googleOptions = {} } = config;
-
-    if (!googleApiKey) {
-        throw new Error("googleApiKey is required for KnowledgeDocs tool");
-    }
-
-    return new DynamicStructuredTool({
-        name: "KnowledgeDocs",
+    return tool({
         description:
-            "Perform vector similarity search on MongoDB Atlas. " +
-            "Returns top-k most relevant documents with similarity scores.",
-        schema: z.object({
-            input: z.string().describe("search query"),
-            dbName: z.string().optional(),
-            collectionName: z.string().default("knowledge"),
-            indexName: z.string().default("default"),
-            embeddingField: z.string().default("embedding"),
-            textField: z.string().default("text"),
-            k: z.number().int().min(1).max(50).default(5),
-            preFilter: z.record(z.unknown()).optional(),
+            "Perform lexical full-text keyword search on MongoDB knowledge documents. " +
+            "Returns top-k most relevant documents with relevance scores.",
+        inputSchema: z.object({
+            input: z.string().describe("search keywords or query string"),
+            dbName: z.string().optional().describe("database name override"),
+            collectionName: z.string().default(defaultCollection).describe("collection name"),
+            indexName: z.string().default(defaultIndex).describe("full-text search index name"),
+            textField: z.string().default(defaultTextField).describe("field name of text content"),
+            k: z.number().int().min(1).max(50).default(5).describe("maximum number of documents to return"),
         }),
-
-        func: async (params) => {
-            const { input, dbName, collectionName, indexName, embeddingField, textField, k, preFilter } = params;
+        execute: async ({
+            input,
+            dbName,
+            collectionName,
+            indexName,
+            textField,
+            k,
+        }) => {
             const query = input?.trim();
-            if (!query) return "Error: Please provide a search query.";
+            if (!query) {
+                return "Error: Please provide search keywords.";
+            }
 
-            const db = getDatabase();
-            if (!db.connection?.db) return "Error: MongoDB connection not ready.";
-
-            const client = db.connection.getClient();
-            const dbRef = client.db(dbName || db.connection.name);
-            const collection = dbRef.collection(collectionName);
-            const embeddings = createEmbeddings(googleApiKey, googleOptions);
-
-            // mongodb driver version mismatch: mongoose@6 bundles mongodb@4,
-            // but @langchain/mongodb expects mongodb@6 Collection type.
-            const vectorStore = new MongoDBAtlasVectorSearch(embeddings, {
-                collection: collection as never,
-                indexName,
-                textKey: textField,
-                embeddingKey: embeddingField,
-            });
+            if (!isDatabaseConnected() || !mongoose.connection.db) {
+                return "Error: MongoDB connection is not ready.";
+            }
 
             try {
-                const results = await vectorStore.similaritySearchWithScore(query, Math.min(k, 50), preFilter);
-                return results?.length
-                    ? formatResults(results as Array<[SearchDocument, number]>)
-                    : "No matching documents found.";
-            } catch (error: unknown) {
+                const db = dbName ? mongoose.connection.getClient().db(dbName) : mongoose.connection.db;
+                const collection = db.collection(collectionName);
+                const limit = Math.min(Math.max(k, 1), 50);
+
+                let results: Record<string, unknown>[] = [];
+
+                // 1. Try Atlas Search ($search lexical text query)
+                try {
+                    const atlasPipeline: Record<string, unknown>[] = [
+                        {
+                            $search: {
+                                index: indexName,
+                                text: {
+                                    query,
+                                    path: textField === "*" ? { wildcard: "*" } : textField,
+                                },
+                            },
+                        },
+                        {
+                            $limit: limit,
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                [textField]: 1,
+                                score: { $meta: "searchScore" },
+                                metadata: 1,
+                            },
+                        },
+                    ];
+                    results = await collection.aggregate(atlasPipeline).toArray();
+                } catch {
+                    // 2. Fallback to standard MongoDB $text full-text search
+                    try {
+                        results = await collection
+                            .find(
+                                { $text: { $search: query } },
+                                { projection: { score: { $meta: "textScore" }, [textField]: 1, metadata: 1 } },
+                            )
+                            .sort({ score: { $meta: "textScore" } })
+                            .limit(limit)
+                            .toArray();
+                    } catch {
+                        // 3. Fallback to regex search on textField
+                        const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+                        results = await collection
+                            .find({ [textField]: regex })
+                            .limit(limit)
+                            .toArray();
+                    }
+                }
+
+                if (!results.length) {
+                    return "No matching documents found.";
+                }
+
+                return results
+                    .map((doc, i) => {
+                        const text = (doc[textField] as string) ?? JSON.stringify(doc);
+                        const score = typeof doc.score === "number" ? doc.score.toFixed(4) : "N/A";
+                        const meta = JSON.stringify(doc.metadata ?? {});
+                        return `${i + 1}. Score=${score}\nText: ${text}\nMetadata: ${meta}`;
+                    })
+                    .join("\n\n");
+            } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
-                console.error("Vector search error:", error);
-                return `Error: Vector search failed - ${msg}`;
+                console.error("[KnowledgeDocs] Lexical search failed:", error);
+                return `Error: Lexical search failed - ${msg}`;
             }
         },
     });

@@ -1,20 +1,34 @@
-import { envRequired } from "../config/index.ts";
 import mongoose from "mongoose";
-import { MongoClient } from "mongodb";
-import type { Mongoose } from "mongoose";
 
-mongoose.set("strictQuery", true);
+let isConnected = false;
 
-const mongoClient = new MongoClient(envRequired("MONGODB_URI"));
+export async function connectDatabase(uri?: string): Promise<typeof mongoose> {
+    const mongoUri = uri || Bun.env.MONGODB_URI;
+    if (!mongoUri) {
+        throw new Error("[Database] MONGODB_URI is required to start the application.");
+    }
 
-export async function connectDatabase(): Promise<Mongoose> {
-    return mongoose.connect(envRequired("MONGODB_URI"));
+    try {
+        mongoose.set("strictQuery", true);
+        await mongoose.connect(mongoUri);
+        isConnected = true;
+        console.info("[Database] Connected to MongoDB successfully.");
+        return mongoose;
+    } catch (error) {
+        isConnected = false;
+        console.error("[Database] Failed to connect to MongoDB:", error);
+        throw error;
+    }
 }
 
-export function getDatabase(): Mongoose {
-    return mongoose;
+export async function disconnectDatabase(): Promise<void> {
+    if (isConnected) {
+        await mongoose.disconnect();
+        isConnected = false;
+        console.info("[Database] Disconnected from MongoDB.");
+    }
 }
 
-export function getMongoClient(): MongoClient {
-    return mongoClient;
+export function isDatabaseConnected(): boolean {
+    return isConnected && mongoose.connection.readyState === 1;
 }

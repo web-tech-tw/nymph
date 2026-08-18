@@ -1,153 +1,70 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { env, envRequired } from "../config/index.ts";
-import { createAgent } from "langchain";
-import { getMongoClient } from "../databases/connection.ts";
-import { MongoDBChatMessageHistory } from "@langchain/mongodb";
-import { ChatAnthropic } from "@langchain/anthropic";
-import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
-import type { BaseMessage } from "@langchain/core/messages";
-import type { DynamicStructuredTool } from "@langchain/community/tools/dynamic";
+import { ToolLoopAgent, type ModelMessage } from "ai";
+import type { ChatAgentParams, ChatAgent } from "../types/agent";
+import type { ChatContext } from "../types/provider";
+import { getHistoryMessages, saveChatMessage } from "../databases/models/message";
 
-import {
-    createCodeExecution,
-    createCurrentDateTime,
-    createKnowledgeDocs,
-    createOpenWeatherMap,
-    createTavilySearch,
-} from "./tools/index.ts";
+export class Chat implements ChatAgent {
+    private agent: ToolLoopAgent;
+    private systemPrompt: string;
 
-const model = new ChatAnthropic({
-    apiKey: envRequired("ANTHROPIC_API_KEY"),
-    model: envRequired("ANTHROPIC_MODEL"),
-});
+    constructor(params: ChatAgentParams) {
+        this.agent = new ToolLoopAgent({
+            model: params.model,
+            tools: params.toolSet,
+        });
+        this.systemPrompt = params.systemPrompt;
+    }
 
-const systemPrompt = readFileSync(
-    fileURLToPath(new URL("../../settings.xml", import.meta.url)),
-    "utf-8",
-).trim();
+    private buildContext(ctx: ChatContext): string {
+        return ctx.content;
+    }
 
-export function useModel(): ChatAnthropic {
-    return model;
-}
+    private async buildMessages(ctx: ChatContext): Promise<ModelMessage[]> {
+        const sessionId = `${ctx.platformName}:${ctx.roomId}`;
+        const historyMessages = await getHistoryMessages(sessionId);
 
-interface ToolAgentOptions {
-    codeExecution?: { enabled?: boolean };
-    openWeatherMap?: { enabled?: boolean; config?: { apiKey?: string } };
-    knowledgeDocs?: { enabled?: boolean; config?: { googleApiKey?: string; googleOptions?: Record<string, unknown> } };
-    tavilySearch?: { enabled?: boolean; config?: { apiKey?: string } };
-}
-
-function getDefaultToolOptions(): ToolAgentOptions {
-    return {
-        codeExecution: {
-            enabled: env("TOOL_CODE_EXECUTION_ENABLED") === "yes",
-        },
-        openWeatherMap: {
-            enabled: env("TOOL_OPEN_WEATHER_MAP_QUERY_RUN_ENABLED") === "yes",
-            config: { apiKey: env("TOOL_OPEN_WEATHER_MAP_API_KEY") ?? undefined },
-        },
-        knowledgeDocs: {
-            enabled: env("TOOL_KNOWLEDGE_DOCS_ENABLED") === "yes",
-            config: {
-                googleApiKey: env("TOOL_KNOWLEDGE_DOCS_GOOGLE_API_KEY") ?? undefined,
-                googleOptions: JSON.parse(env("TOOL_KNOWLEDGE_DOCS_GOOGLE_OPTIONS") || "{}") as Record<string, unknown>,
+        return [
+            {
+                role: "system",
+                content: this.systemPrompt,
             },
-        },
-        tavilySearch: {
-            enabled: env("TOOL_TAVILY_SEARCH_ENABLED") === "yes",
-            config: { apiKey: env("TOOL_TAVILY_SEARCH_API_KEY") ?? undefined },
-        },
-    };
-}
-
-function collectTools(opts: ToolAgentOptions = getDefaultToolOptions()): DynamicStructuredTool[] {
-    const tools: DynamicStructuredTool[] = [createCurrentDateTime()];
-
-    if (opts.codeExecution?.enabled) {
-        tools.push(createCodeExecution());
+            ...historyMessages,
+            {
+                role: "user",
+                content: this.buildContext(ctx),
+            }
+        ];
     }
 
-    if (opts.openWeatherMap?.enabled && opts.openWeatherMap.config?.apiKey) {
-        tools.push(createOpenWeatherMap({ apiKey: opts.openWeatherMap.config.apiKey }));
+    async replyMessage(ctx: ChatContext): Promise<string> {
+        const messages = await this.buildMessages(ctx);
+        const result = await this.agent.generate({
+            messages,
+        });
+
+        const reply = result.content.reduce((acc: string, c) => {
+            if ("text" in c) {
+                return acc + c.text;
+            }
+            return acc;
+        }, "");
+
+        const sessionId = `${ctx.platformName}:${ctx.roomId}`;
+        void saveChatMessage({
+            sessionId,
+            role: "user",
+            content: this.buildContext(ctx),
+            sender: ctx.sender,
+        });
+
+        if (reply) {
+            void saveChatMessage({
+                sessionId,
+                role: "assistant",
+                content: reply,
+            });
+        }
+
+        return reply;
     }
-
-    if (opts.knowledgeDocs?.enabled && opts.knowledgeDocs.config?.googleApiKey) {
-        tools.push(createKnowledgeDocs({
-            googleApiKey: opts.knowledgeDocs.config.googleApiKey,
-            googleOptions: opts.knowledgeDocs.config.googleOptions,
-        }));
-    }
-
-    if (opts.tavilySearch?.enabled) {
-        const tavilyTool = createTavilySearch(opts.tavilySearch.config?.apiKey);
-        if (tavilyTool) tools.push(tavilyTool);
-    }
-
-    return tools;
-}
-
-export async function chatWithAI(chatId: string, humanInput: string, opts?: ToolAgentOptions): Promise<string> {
-    const collection = getMongoClient().db().collection("chat_messages");
-    const history = new MongoDBChatMessageHistory({
-        collection,
-        sessionId: `nymph:agent:${chatId}`,
-    });
-
-    const historyMessages = await history.getMessages();
-    const messages: BaseMessage[] = [new SystemMessage(systemPrompt), ...historyMessages, new HumanMessage(humanInput)];
-
-    const tools = collectTools(opts);
-    const agent = createAgent({ model, tools });
-    const { messages: responseMessages } = await agent.invoke({ messages }) as { messages: BaseMessage[] };
-    const aiMsg = responseMessages.findLast((m): m is AIMessage => m instanceof AIMessage);
-
-    if (aiMsg) {
-        history.addMessages([new HumanMessage(humanInput), aiMsg]).catch((e: unknown) =>
-            console.error("Failed to save chat history:", e),
-        );
-    }
-
-    return extractText(aiMsg);
-}
-
-function extractText(aiMsg: AIMessage | undefined): string {
-    if (!aiMsg) return "";
-    const { content } = aiMsg;
-    if (typeof content === "string") return content;
-    if (Array.isArray(content) && content.length) {
-        const first = content[0];
-        return typeof first === "string" ? first : JSON.stringify(first);
-    }
-    return String(aiMsg);
-}
-
-export function sliceContent(content: string, maxLength: number, separator = "\n"): string[] {
-    const parts = content.split(separator);
-    const snippets: string[] = [];
-    let buffer = "";
-
-    for (const part of parts) {
-        if (!part) { buffer += separator; continue; }
-        if (buffer.length + part.length < maxLength) { buffer += part; continue; }
-        if (buffer.trim()) snippets.push(buffer.trim());
-        buffer = part;
-    }
-    if (buffer.trim()) snippets.push(buffer.trim());
-    return snippets;
-}
-
-export async function translateText(chatId: string, content: string, langs?: string[]): Promise<string> {
-    const [langA, langB] = langs?.length === 2 ? langs : ["en", "zh"];
-
-    const prompt = [
-        "You are a translation assistant.",
-        `Two languages: ${langA} and ${langB}.`,
-        `If text is in ${langA}, translate to ${langB}; if in ${langB}, translate to ${langA}.`,
-        "If it doesn't need translation, return unchanged.",
-        "Preserve meaning and style. Only return translated text.",
-        "", "Text:", content,
-    ].join("\n");
-
-    return (await chatWithAI(`${chatId}:translate:${langA}:${langB}`, prompt)).trim();
 }

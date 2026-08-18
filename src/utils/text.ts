@@ -1,14 +1,27 @@
-import fs from "node:fs";
-import readline from "node:readline";
+export function sliceContent(content: string, limit = 2000): string[] {
+    if (!content) return [];
+    if (content.length <= limit) return [content];
 
-export async function* readLines(path: string): AsyncGenerator<string> {
-    const fileStream = fs.createReadStream(path, {encoding: "utf8"});
-    const rl = readline.createInterface({
-        input: fileStream,
-        crlfDelay: Infinity,
-    });
+    const chunks: string[] = [];
+    let remaining = content;
 
-    for await (const line of rl) {
-        yield line;
+    while (remaining.length > 0) {
+        if (remaining.length <= limit) {
+            chunks.push(remaining);
+            break;
+        }
+
+        let sliceIndex = remaining.lastIndexOf("\n", limit);
+        if (sliceIndex === -1 || sliceIndex === 0) {
+            sliceIndex = remaining.lastIndexOf(" ", limit);
+        }
+        if (sliceIndex === -1 || sliceIndex === 0) {
+            sliceIndex = limit;
+        }
+
+        chunks.push(remaining.slice(0, sliceIndex).trim());
+        remaining = remaining.slice(sliceIndex).trim();
     }
+
+    return chunks.filter((c) => c.length > 0);
 }
