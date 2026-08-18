@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - rolling
 
 env:
   REGISTRY: ghcr.io
@@ -48,11 +49,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via Webhook
+      - name: Deploy main via Webhook
+        if: github.ref_name == 'main'
         env:
           WEBHOOK_URL: ${{ vars._WEBHOOK_URL_PART_UP }}
           WEBHOOK_SECRET: ${{ secrets._WEBHOOK_SECRET_PART_UP }}
-          WEBHOOK_DEPLOY_PATH: ${{ vars._WEBHOOK_DEPLOY_PATH }}
+          WEBHOOK_DEPLOY_PATH: ${{ vars._WEBHOOK_DEPLOY_PATH_MAIN }}
+        run: |
+          curl --silent --show-error --fail -X POST \
+            -H "X-Nymph-Stack-Secret: $WEBHOOK_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{\"path\": \"$WEBHOOK_DEPLOY_PATH\"}" \
+            "$WEBHOOK_URL"
+
+      - name: Deploy rolling via Webhook
+        if: github.ref_name == 'rolling'
+        env:
+          WEBHOOK_URL: ${{ vars._WEBHOOK_URL_PART_UP }}
+          WEBHOOK_SECRET: ${{ secrets._WEBHOOK_SECRET_PART_UP }}
+          WEBHOOK_DEPLOY_PATH: ${{ vars._WEBHOOK_DEPLOY_PATH_ROLLING }}
         run: |
           curl --silent --show-error --fail -X POST \
             -H "X-Nymph-Stack-Secret: $WEBHOOK_SECRET" \

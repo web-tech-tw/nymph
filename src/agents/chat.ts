@@ -5,14 +5,13 @@ import { getHistoryMessages, saveChatMessage } from "../databases/models/message
 
 export class Chat implements ChatAgent {
     private agent: ToolLoopAgent;
-    private systemPrompt: string;
 
     constructor(params: ChatAgentParams) {
         this.agent = new ToolLoopAgent({
             model: params.model,
+            instructions: params.instructions,
             tools: params.toolSet,
         });
-        this.systemPrompt = params.systemPrompt;
     }
 
     private buildContext(ctx: ChatContext): string {
@@ -24,10 +23,6 @@ export class Chat implements ChatAgent {
         const historyMessages = await getHistoryMessages(sessionId);
 
         return [
-            {
-                role: "system",
-                content: this.systemPrompt,
-            },
             ...historyMessages,
             {
                 role: "user",

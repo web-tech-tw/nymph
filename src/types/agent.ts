@@ -4,7 +4,7 @@ import type { ChatContext } from "./provider";
 export type ChatAgentParams = {
     model: LanguageModel;
     toolSet?: ToolSet;
-    systemPrompt: string;
+    instructions: string;
 };
 
 export interface ChatAgent {
