@@ -1,3 +1,4 @@
+import { connectDatabase } from "./src/databases/connection";
 import { Chat } from "./src/agents/chat";
 import { defaultTools } from "./src/agents/tools";
 import { GlobalProvider } from "./src/providers/global";
@@ -5,6 +6,8 @@ import { DiscordProvider } from "./src/providers/discord";
 import { LineProvider } from "./src/providers/line";
 import { server } from "./src/routes";
 import type { ChatContext } from "./src/types/provider";
+
+await connectDatabase();
 
 const settingsFile = Bun.file("./settings.xml");
 const chatAgent = new Chat({
