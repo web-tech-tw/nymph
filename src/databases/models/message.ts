@@ -25,7 +25,6 @@ const ChatMessageSchema = new Schema<IChatMessage>(
         },
     },
     {
-        collection: "chat_messages",
         timestamps: { createdAt: true, updatedAt: false },
     },
 );
