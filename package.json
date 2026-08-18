@@ -41,6 +41,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.39",
     "@line/bot-sdk": "^11.2.0",
     "ai": "^7.0.66",
     "dayjs": "^1.11.21",
