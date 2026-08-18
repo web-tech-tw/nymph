@@ -19,11 +19,11 @@ const chatAgent = new Chat({
 
 const providers = [
     new DiscordProvider({
-        token: Bun.env.DISCORD_TOKEN || "",
+        token: Bun.env.DISCORD_BOT_TOKEN || "",
     }),
     new LineProvider({
-        token: Bun.env.LINE_TOKEN || Bun.env.LINE_CHANNEL_ACCESS_TOKEN || "",
-        secret: Bun.env.LINE_SECRET || Bun.env.LINE_CHANNEL_SECRET || "",
+        token: Bun.env.LINE_CHANNEL_ACCESS_TOKEN || "",
+        secret: Bun.env.LINE_CHANNEL_SECRET || "",
         server,
     }),
 ];
@@ -40,5 +40,7 @@ provider.onCommand(async (_command, _args, ctx) => {
 });
 
 await provider.start();
-server.listen(Number(Bun.env.PORT || 3000));
-console.info(`[Nymph] HTTP Server listening on port ${Bun.env.PORT || 3000}`);
+
+const port = Number(Bun.env.HTTP_PORT || 3000);
+server.listen(port);
+console.info(`[Nymph] HTTP Server listening on port ${port}`);
