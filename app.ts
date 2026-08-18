@@ -1,3 +1,4 @@
+import { anthropic } from "@ai-sdk/anthropic";
 import { connectDatabase } from "./src/databases/connection";
 import { Chat } from "./src/agents/chat";
 import { defaultTools } from "./src/agents/tools";
@@ -11,7 +12,7 @@ await connectDatabase();
 
 const settingsFile = Bun.file("./settings.xml");
 const chatAgent = new Chat({
-    model: Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+    model: anthropic(Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5"),
     systemPrompt: await settingsFile.text(),
     toolSet: defaultTools,
 });
