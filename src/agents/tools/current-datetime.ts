@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from "@langchain/community/tools/dynamic";
+import { tool } from "ai";
 import { z } from "zod";
 import dayjs from "dayjs";
 import dayjsUtc from "dayjs/plugin/utc.js";
@@ -18,16 +18,17 @@ const TIME_FORMAT = [
     "[Time Second: ]ss",
 ].join("\n");
 
-export function createCurrentDateTime(): DynamicStructuredTool {
-    return new DynamicStructuredTool({
-        name: "CurrentDateTime",
-        description: "Returns the current date and time.",
-        schema: z.object({
-            input: z.string().describe("time zone").default("Asia/Taipei"),
-        }),
-        func: async ({ input }: { input: string }) => {
-            const tz = input || "Asia/Taipei";
-            return dayjs.tz(dayjs(), tz).format(TIME_FORMAT);
+export const toolCurrentDateTime = () => {
+    return tool(
+        {
+            description: "Returns the current date and time.",
+            inputSchema: z.object({
+                input: z.string().describe("time zone").default("Asia/Taipei"),
+            }),
+            execute: async ({ input }: { input: string }) => {
+                const tz = input || "Asia/Taipei";
+                return dayjs.tz(dayjs(), tz).format(TIME_FORMAT);
+            },
         },
-    });
-}
+    );
+};
