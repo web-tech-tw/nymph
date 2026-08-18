@@ -13,7 +13,7 @@ await connectDatabase();
 const settingsFile = Bun.file("./settings.xml");
 const chatAgent = new Chat({
     model: anthropic(Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5"),
-    systemPrompt: await settingsFile.text(),
+    instructions: await settingsFile.text(),
     toolSet: defaultTools,
 });
 

@@ -37,6 +37,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:check": "eslint . --max-warnings 0",
+    "migrate:history": "bun scripts/migrate-chat-history.ts",
     "prepare": "husky install"
   },
   "type": "module",
