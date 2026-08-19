@@ -1,4 +1,4 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { connectDatabase } from "./src/databases/connection";
 import { Chat } from "./src/agents/chat";
 import { defaultTools } from "./src/agents/tools";
@@ -9,6 +9,11 @@ import { server } from "./src/routes";
 import type { ChatContext } from "./src/types/provider";
 
 await connectDatabase();
+
+const anthropic = createAnthropic({
+    apiKey: Bun.env.ANTHROPIC_API_KEY,
+    baseURL: Bun.env.ANTHROPIC_BASE_URL,
+});
 
 const settingsFile = Bun.file("./settings.xml");
 const chatAgent = new Chat({

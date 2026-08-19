@@ -37,6 +37,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:check": "eslint . --max-warnings 0",
+    "etl": "bun src/pipeline/index.ts",
+    "etl:dry-run": "bun src/pipeline/index.ts --dry-run",
     "migrate:history": "bun scripts/migrate-chat-history.ts",
     "prepare": "husky install"
   },
