@@ -59,7 +59,7 @@ function saveCheckpoint(file: string, state: CheckpointState) {
 
 export async function runPipeline(options: PipelineOptions = {}): Promise<PipelineStats> {
     const isDryRun = options.dryRun ?? false;
-    const isResume = options.resume ?? false;
+    const isResume = options.resume ?? true;
     const maxDays = options.days;
     const targetDateArg = options.targetDate;
     const concurrency = options.concurrency ?? PIPELINE_CONFIG.llm.concurrency;
@@ -227,7 +227,8 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
 if (import.meta.main) {
     const args = process.argv.slice(2);
     const isDryRun = args.includes("--dry-run");
-    const isResume = args.includes("--resume");
+    const isFresh = args.includes("--fresh") || args.includes("--no-resume");
+    const isResume = !isFresh;
     const daysArg = args.find((a) => a.startsWith("--days="))?.split("=")[1];
     const maxDays = daysArg ? Number.parseInt(daysArg, 10) : undefined;
     const targetDateArg = args.find((a) => a.startsWith("--date="))?.split("=")[1];
@@ -241,7 +242,7 @@ if (import.meta.main) {
         targetDate: targetDateArg,
         concurrency,
     }).catch((err) => {
-        console.error("❌ Pipeline Error:", err);
+        console.error("Pipeline Error:", err);
         process.exit(1);
     });
 }
