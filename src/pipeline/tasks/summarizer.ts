@@ -3,6 +3,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { PIPELINE_CONFIG } from "../config";
 import type { DiscussionThread, ExtractedKnowledge } from "../types";
+import { ANTHROPIC_CACHE_CONTROL } from "../../utils/prompts";
 
 const anthropic = createAnthropic({
     apiKey: PIPELINE_CONFIG.llm.apiKey || Bun.env.ANTHROPIC_API_KEY,
@@ -79,6 +80,7 @@ export async function summarizeThread(
             model: anthropic(modelName),
             schema: TechnicalSummarySchema,
             system: EXTRACTION_SYSTEM_PROMPT,
+            providerOptions: ANTHROPIC_CACHE_CONTROL,
             prompt: `Analyze the following chat transcript and perform structured technical extraction:\n\nDate: ${thread.date}\nParticipants: ${thread.participants.join(", ")}\n\n[Chat Transcript]\n${chatTranscript}`,
         });
 
@@ -104,6 +106,6 @@ export async function summarizeThread(
         };
     } catch (error) {
         console.error(`[Summarizer] Failed to summarize thread ${thread.id}:`, error);
-        return null;
+        throw error;
     }
 }

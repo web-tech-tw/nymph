@@ -59,7 +59,7 @@ function saveCheckpoint(file: string, state: CheckpointState) {
 
 export async function runPipeline(options: PipelineOptions = {}): Promise<PipelineStats> {
     const isDryRun = options.dryRun ?? false;
-    const isResume = options.resume ?? false;
+    const isResume = options.resume ?? true;
     const maxDays = options.days;
     const targetDateArg = options.targetDate;
     const concurrency = options.concurrency ?? PIPELINE_CONFIG.llm.concurrency;
@@ -128,79 +128,87 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
         console.info("──────────────────────────────────────────────────");
         console.info(`[${dIndex + 1}/${dates.length}] Processing Date: ${dateStr}`);
 
-        // Fetch all raw messages for this date, sorted by time
-        const rawDocs = await sourceCol
-            .find({ date: dateStr })
-            .sort({ time: 1, createdAt: 1 })
-            .toArray();
+        try {
+            // Fetch all raw messages for this date, sorted by time
+            const rawDocs = await sourceCol
+                .find({ date: dateStr })
+                .sort({ time: 1, createdAt: 1 })
+                .toArray();
 
-        stats.totalRaw += rawDocs.length;
-        console.info(`  - Raw messages fetched: ${rawDocs.length}`);
+            stats.totalRaw += rawDocs.length;
+            console.info(`  - Raw messages fetched: ${rawDocs.length}`);
 
-        if (!rawDocs.length) {
-            processedSet.add(dateStr);
-            continue;
-        }
+            if (!rawDocs.length) {
+                processedSet.add(dateStr);
+                continue;
+            }
 
-        // Task 1: Extract, Denoise & Merge
-        const mergedBlocks = extractAndDenoise(rawDocs, globalAuthors);
-        stats.totalMergedBlocks += mergedBlocks.length;
-        console.info(`  - Merged into blocks: ${mergedBlocks.length}`);
+            // Task 1: Extract, Denoise & Merge
+            const mergedBlocks = extractAndDenoise(rawDocs, globalAuthors);
+            stats.totalMergedBlocks += mergedBlocks.length;
+            console.info(`  - Merged into blocks: ${mergedBlocks.length}`);
 
-        // Task 2: Disentangle Discussion Threads
-        const threads = disentangleThreads(mergedBlocks);
-        stats.totalCandidateThreads += threads.length;
-        console.info(`  - Segmented discussion threads: ${threads.length}`);
+            // Task 2: Disentangle Discussion Threads
+            const threads = disentangleThreads(mergedBlocks);
+            stats.totalCandidateThreads += threads.length;
+            console.info(`  - Segmented discussion threads: ${threads.length}`);
 
-        if (!threads.length) {
-            console.info("  - No discussion threads formed on this date.");
-            processedSet.add(dateStr);
-            checkpoint.completedDates = Array.from(processedSet);
-            if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
-            continue;
-        }
+            if (!threads.length) {
+                console.info("  - No discussion threads formed on this date.");
+                processedSet.add(dateStr);
+                checkpoint.completedDates = Array.from(processedSet);
+                if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
+                continue;
+            }
 
-        // Task 3: LLM Summarization with Concurrency Control
-        console.info(`  - Summarizing ${threads.length} threads with ${PIPELINE_CONFIG.llm.model}...`);
-        const extractedItems: ExtractedKnowledge[] = [];
+            // Task 3: LLM Summarization with Concurrency Control
+            console.info(`  - Summarizing ${threads.length} threads with ${PIPELINE_CONFIG.llm.model}...`);
+            const extractedItems: ExtractedKnowledge[] = [];
 
-        for (let i = 0; i < threads.length; i += concurrency) {
-            const batch = threads.slice(i, i + concurrency);
-            const promises = batch.map((t) => summarizeThread(t, PIPELINE_CONFIG.llm.model));
-            const results = await Promise.all(promises);
+            for (let i = 0; i < threads.length; i += concurrency) {
+                const batch = threads.slice(i, i + concurrency);
+                const promises = batch.map((t) => summarizeThread(t, PIPELINE_CONFIG.llm.model));
+                const results = await Promise.all(promises);
 
-            for (const res of results) {
-                if (res) {
-                    extractedItems.push(res);
+                for (const res of results) {
+                    if (res) {
+                        extractedItems.push(res);
+                    }
                 }
             }
-        }
 
-        stats.totalExtractedItems += extractedItems.length;
-        console.info(`  - Extracted ${extractedItems.length} valuable knowledge items.`);
+            stats.totalExtractedItems += extractedItems.length;
+            console.info(`  - Extracted ${extractedItems.length} valuable knowledge items.`);
 
-        // Print preview
-        for (const item of extractedItems) {
-            console.info(`    + [${item.category}] ${item.topic} (Tags: ${item.tags.join(", ")})`);
-            if (isDryRun) {
-                console.info("\n--- PREVIEW MARKDOWN SLICE ---");
-                console.info(formatKnowledgeMarkdown(item));
-                console.info("------------------------------\n");
+            // Print preview
+            for (const item of extractedItems) {
+                console.info(`    + [${item.category}] ${item.topic} (Tags: ${item.tags.join(", ")})`);
+                if (isDryRun) {
+                    console.info("\n--- PREVIEW MARKDOWN SLICE ---");
+                    console.info(formatKnowledgeMarkdown(item));
+                    console.info("------------------------------\n");
+                }
             }
-        }
 
-        // Task 4: Load to Target MongoDB
-        if (!isDryRun && extractedItems.length > 0) {
-            const knowledgeDocs = buildKnowledgeDocuments(extractedItems);
-            const { inserted, updated } = await loadKnowledgeDocuments(knowledgeDocs);
-            stats.totalLoadedDocs += inserted + updated;
-            console.info(`  - Target DB: ${inserted} inserted, ${updated} updated.`);
-        }
+            // Task 4: Load to Target MongoDB
+            if (!isDryRun && extractedItems.length > 0) {
+                const knowledgeDocs = buildKnowledgeDocuments(extractedItems);
+                const { inserted, updated } = await loadKnowledgeDocuments(knowledgeDocs);
+                stats.totalLoadedDocs += inserted + updated;
+                console.info(`  - Target DB: ${inserted} inserted, ${updated} updated.`);
+            }
 
-        processedSet.add(dateStr);
-        checkpoint.completedDates = Array.from(processedSet);
-        checkpoint.totalExtracted += extractedItems.length;
-        if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
+            // Mark date as fully completed only if no exceptions occurred
+            processedSet.add(dateStr);
+            checkpoint.completedDates = Array.from(processedSet);
+            checkpoint.totalExtracted += extractedItems.length;
+            if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
+        } catch (err) {
+            console.error(`  [Pipeline Error] Failed to process date ${dateStr}:`, err);
+            console.warn(`  [Checkpoint] Date ${dateStr} excluded from completed list; will be retried on next resume.`);
+            // Save progress of all previously completed dates so far
+            if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
+        }
     }
 
     // Cleanup connections
@@ -227,7 +235,8 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
 if (import.meta.main) {
     const args = process.argv.slice(2);
     const isDryRun = args.includes("--dry-run");
-    const isResume = args.includes("--resume");
+    const isFresh = args.includes("--fresh") || args.includes("--no-resume");
+    const isResume = !isFresh;
     const daysArg = args.find((a) => a.startsWith("--days="))?.split("=")[1];
     const maxDays = daysArg ? Number.parseInt(daysArg, 10) : undefined;
     const targetDateArg = args.find((a) => a.startsWith("--date="))?.split("=")[1];
@@ -241,7 +250,7 @@ if (import.meta.main) {
         targetDate: targetDateArg,
         concurrency,
     }).catch((err) => {
-        console.error("❌ Pipeline Error:", err);
+        console.error("Pipeline Error:", err);
         process.exit(1);
     });
 }
