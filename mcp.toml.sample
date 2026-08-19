@@ -1,0 +1,21 @@
+# Model Context Protocol (MCP) Server Configuration
+# Copy this file to `mcp.toml` to configure MCP servers.
+
+# HTTP / SSE Server Example (Optional server with retry settings)
+[mcp_servers.weather]
+enabled = true
+required = false            # If true, startup fails if server cannot connect
+max_retries = 2             # Number of retry attempts on failure
+retry_delay = 1.5           # Base retry delay in seconds (exponential backoff)
+type = "http"               # "http" or "sse"
+url = "https://mcp.example.com/sse"
+headers = { Authorization = "Bearer your_token_here" }
+
+# Stdio Local Process Server Example (Required server)
+[mcp_servers.filesystem]
+enabled = true
+required = false
+max_retries = 3
+retry_delay = 1.0
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "./public"]

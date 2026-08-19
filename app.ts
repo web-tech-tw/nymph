@@ -1,7 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { connectDatabase } from "./src/databases/connection";
 import { Chat } from "./src/agents/chat";
-import { defaultTools } from "./src/agents/tools";
+import { getAllTools, closeMcpClients } from "./src/agents/tools";
 import { GlobalProvider } from "./src/providers/global";
 import { DiscordProvider } from "./src/providers/discord";
 import { LineProvider } from "./src/providers/line";
@@ -15,11 +15,13 @@ const anthropic = createAnthropic({
     baseURL: Bun.env.ANTHROPIC_BASE_URL,
 });
 
+const tools = await getAllTools();
+
 const settingsFile = Bun.file("./settings.xml");
 const chatAgent = new Chat({
     model: anthropic(Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5"),
     instructions: await settingsFile.text(),
-    toolSet: defaultTools,
+    toolSet: tools,
 });
 
 const providers = [
@@ -49,3 +51,13 @@ await provider.start();
 const port = Number(Bun.env.HTTP_PORT || 3000);
 server.listen(port);
 console.info(`[Nymph] HTTP Server listening on port ${port}`);
+
+const shutdown = async () => {
+    console.info("[Nymph] Shutting down...");
+    await closeMcpClients();
+    process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
