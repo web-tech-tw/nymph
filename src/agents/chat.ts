@@ -2,6 +2,7 @@ import { ToolLoopAgent, type ModelMessage } from "ai";
 import type { ChatAgentParams, ChatAgent } from "../types/agent";
 import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage } from "../databases/models/message";
+import { applyPromptCaching } from "../utils/prompts";
 
 export class Chat implements ChatAgent {
     private agent: ToolLoopAgent;
@@ -23,11 +24,11 @@ export class Chat implements ChatAgent {
         const historyMessages = await getHistoryMessages(sessionId);
 
         return [
-            ...historyMessages,
+            ...applyPromptCaching(historyMessages),
             {
                 role: "user",
                 content: this.buildContext(ctx),
-            }
+            },
         ];
     }
 
