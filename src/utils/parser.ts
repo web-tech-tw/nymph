@@ -11,9 +11,9 @@ const DATE_REGEX = /^(\d{4}[/.-]\d{1,2}[/.-]\d{1,2})(?:\s+(.+))?$/;
 const TIME_REGEX = /^(\d{1,2}:\d{2})\s+(.*)$/;
 
 function generateHash(date: string, time: string, content: string): string {
-    return new Bun.CryptoHasher("sha3-256")
-        .update(`${date}\n${time}\n${content}`)
-        .digest("hex");
+    const hasher = new Bun.CryptoHasher("sha3-256");
+    hasher.update(`${date}\n${time}\n${content}`);
+    return hasher.digest("hex");
 }
 
 export async function* parseChatStream(
