@@ -106,6 +106,6 @@ export async function summarizeThread(
         };
     } catch (error) {
         console.error(`[Summarizer] Failed to summarize thread ${thread.id}:`, error);
-        return null;
+        throw error;
     }
 }
