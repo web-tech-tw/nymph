@@ -1,117 +1,100 @@
 import { tool } from "ai";
 import { z } from "zod";
-import mongoose from "mongoose";
 import { isDatabaseConnected } from "../../databases/connection";
+import { KnowledgeModel } from "../../databases/models/knowledge";
 
-export interface KnowledgeDocsConfig {
-    defaultCollection?: string;
-    defaultIndex?: string;
-    defaultTextField?: string;
-}
-
-export function toolKnowledgeDocs(config?: KnowledgeDocsConfig) {
-    const defaultCollection = config?.defaultCollection || "knowledge";
-    const defaultIndex = config?.defaultIndex || "default";
-    const defaultTextField = config?.defaultTextField || "text";
-
+export function toolKnowledgeDocs() {
     return tool({
         description:
-            "Perform lexical full-text keyword search on MongoDB knowledge documents. " +
-            "Returns top-k most relevant documents with relevance scores.",
+            "Search the engineering knowledge base for historical troubleshooting solutions, architecture decisions, code snippets, and technical discussions.",
         inputSchema: z.object({
-            input: z.string().describe("search keywords or query string"),
-            dbName: z.string().optional().describe("database name override"),
-            collectionName: z.string().default(defaultCollection).describe("collection name"),
-            indexName: z.string().default(defaultIndex).describe("full-text search index name"),
-            textField: z.string().default(defaultTextField).describe("field name of text content"),
-            k: z.number().int().min(1).max(50).default(5).describe("maximum number of documents to return"),
+            query: z
+                .string()
+                .describe(
+                    "Search keywords or technical questions to look up in the knowledge base (e.g. 'vue3 pinia', 'docker getting started', 'element-ui gyp').",
+                ),
+            category: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional technical category filter (e.g. 'Frontend', 'Backend', 'DevOps', 'Tools & Best Practices', 'Security & Auth', 'AI & Machine Learning').",
+                ),
+            limit: z
+                .number()
+                .int()
+                .min(1)
+                .max(20)
+                .default(5)
+                .describe("Maximum number of knowledge slices to return (default: 5)."),
         }),
-        execute: async ({
-            input,
-            dbName,
-            collectionName,
-            indexName,
-            textField,
-            k,
-        }) => {
-            const query = input?.trim();
-            if (!query) {
+        execute: async ({ query, category, limit = 5 }) => {
+            const trimmedQuery = query?.trim();
+            if (!trimmedQuery) {
                 return "Error: Please provide search keywords.";
             }
 
-            if (!isDatabaseConnected() || !mongoose.connection.db) {
-                return "Error: MongoDB connection is not ready.";
+            if (!isDatabaseConnected()) {
+                return "Error: Database connection is not ready.";
             }
 
+            const maxLimit = Math.min(Math.max(limit, 1), 20);
+
             try {
-                const db = dbName ? mongoose.connection.getClient().db(dbName) : mongoose.connection.db;
-                const collection = db.collection(collectionName);
-                const limit = Math.min(Math.max(k, 1), 50);
+                // 1. Primary: Full-text search with relevance scoring
+                const textFilter: Record<string, unknown> = {
+                    $text: { $search: trimmedQuery },
+                };
+                if (category) {
+                    textFilter["metadata.category"] = category;
+                }
 
-                let results: Record<string, unknown>[] = [];
+                let docs = await KnowledgeModel.find(
+                    textFilter,
+                    { score: { $meta: "textScore" }, text: 1, metadata: 1 },
+                )
+                    .sort({ score: { $meta: "textScore" } })
+                    .limit(maxLimit)
+                    .lean();
 
-                // 1. Try Atlas Search ($search lexical text query)
-                try {
-                    const atlasPipeline: Record<string, unknown>[] = [
-                        {
-                            $search: {
-                                index: indexName,
-                                text: {
-                                    query,
-                                    path: textField === "*" ? { wildcard: "*" } : textField,
-                                },
-                            },
-                        },
-                        {
-                            $limit: limit,
-                        },
-                        {
-                            $project: {
-                                _id: 1,
-                                [textField]: 1,
-                                score: { $meta: "searchScore" },
-                                metadata: 1,
-                            },
-                        },
-                    ];
-                    results = await collection.aggregate(atlasPipeline).toArray();
-                } catch {
-                    // 2. Fallback to standard MongoDB $text full-text search
-                    try {
-                        results = await collection
-                            .find(
-                                { $text: { $search: query } },
-                                { projection: { score: { $meta: "textScore" }, [textField]: 1, metadata: 1 } },
-                            )
-                            .sort({ score: { $meta: "textScore" } })
-                            .limit(limit)
-                            .toArray();
-                    } catch {
-                        // 3. Fallback to regex search on textField
-                        const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-                        results = await collection
-                            .find({ [textField]: regex })
-                            .limit(limit)
-                            .toArray();
+                // 2. Fallback: Regex search across text, topic, and tags
+                if (!docs.length) {
+                    const escaped = trimmedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    const regex = new RegExp(escaped, "i");
+                    const regexFilter: Record<string, unknown> = {
+                        $or: [
+                            { text: regex },
+                            { "metadata.topic": regex },
+                            { "metadata.tags": { $in: [regex] } },
+                        ],
+                    };
+                    if (category) {
+                        regexFilter["metadata.category"] = category;
                     }
+
+                    docs = await KnowledgeModel.find(regexFilter)
+                        .limit(maxLimit)
+                        .lean();
                 }
 
-                if (!results.length) {
-                    return "No matching documents found.";
+                if (!docs.length) {
+                    return `<knowledge_documents count="0" query="${trimmedQuery}" />`;
                 }
 
-                return results
-                    .map((doc, i) => {
-                        const text = (doc[textField] as string) ?? JSON.stringify(doc);
-                        const score = typeof doc.score === "number" ? doc.score.toFixed(4) : "N/A";
-                        const meta = JSON.stringify(doc.metadata ?? {});
-                        return `${i + 1}. Score=${score}\nText: ${text}\nMetadata: ${meta}`;
+                const docXml = docs
+                    .map((doc, index) => {
+                        const rawDoc = doc as Record<string, unknown>;
+                        const scoreAttr = typeof rawDoc.score === "number" ? ` score="${rawDoc.score.toFixed(2)}"` : "";
+                        const topic = doc.metadata?.topic ? ` topic="${doc.metadata.topic}"` : "";
+                        const categoryAttr = doc.metadata?.category ? ` category="${doc.metadata.category}"` : "";
+                        return `  <document index="${index + 1}"${topic}${categoryAttr}${scoreAttr}>\n${doc.text}\n  </document>`;
                     })
-                    .join("\n\n");
+                    .join("\n");
+
+                return `<knowledge_documents count="${docs.length}" query="${trimmedQuery}">\n${docXml}\n</knowledge_documents>`;
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
-                console.error("[KnowledgeDocs] Lexical search failed:", error);
-                return `Error: Lexical search failed - ${msg}`;
+                console.error("[KnowledgeDocs] Search failed:", error);
+                return `Error searching knowledge base: ${msg}`;
             }
         },
     });
