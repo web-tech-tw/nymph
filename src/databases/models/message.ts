@@ -3,10 +3,16 @@ import type { ModelMessage } from "ai";
 import type { UserProfile } from "../../types/provider";
 import { isDatabaseConnected } from "../connection";
 
+export interface IToolCallRecord {
+    toolName: string;
+    args?: Record<string, unknown>;
+}
+
 export interface IChatMessage {
     sessionId: string;
     role: "user" | "assistant" | "system";
     content: string;
+    toolCalls?: IToolCallRecord[];
     sender?: {
         id?: string;
         nickname?: string;
@@ -19,6 +25,15 @@ const ChatMessageSchema = new Schema<IChatMessage>(
         sessionId: { type: String, required: true, index: true },
         role: { type: String, required: true, enum: ["user", "assistant", "system"] },
         content: { type: String, required: true },
+        toolCalls: {
+            type: [
+                {
+                    toolName: { type: String, required: true },
+                    args: { type: Schema.Types.Mixed },
+                },
+            ],
+            default: undefined,
+        },
         sender: {
             id: { type: String },
             nickname: { type: String },
@@ -61,6 +76,7 @@ export async function saveChatMessage(params: {
     sessionId: string;
     role: "user" | "assistant";
     content: string;
+    toolCalls?: IToolCallRecord[];
     sender?: UserProfile;
 }): Promise<void> {
     if (!isDatabaseConnected()) {
@@ -72,6 +88,7 @@ export async function saveChatMessage(params: {
             sessionId: params.sessionId,
             role: params.role,
             content: params.content,
+            toolCalls: params.toolCalls?.length ? params.toolCalls : undefined,
             sender: params.sender
                 ? {
                     id: params.sender.id,

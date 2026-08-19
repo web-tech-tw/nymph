@@ -1,7 +1,7 @@
 import { ToolLoopAgent, type ModelMessage } from "ai";
 import type { ChatAgentParams, ChatAgent } from "../types/agent";
 import type { ChatContext } from "../types/provider";
-import { getHistoryMessages, saveChatMessage } from "../databases/models/message";
+import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
 import { applyPromptCaching } from "../utils/prompts";
 
 export class Chat implements ChatAgent {
@@ -38,6 +38,22 @@ export class Chat implements ChatAgent {
             messages,
         });
 
+        // 1. Extract and log tool calls if dispatched
+        const toolCalls: IToolCallRecord[] = (result.toolCalls || []).map((tc) => {
+            const rawTc = tc as unknown as { args?: Record<string, unknown>; input?: Record<string, unknown> };
+            return {
+                toolName: tc.toolName,
+                args: rawTc.args ?? rawTc.input,
+            };
+        });
+
+        if (toolCalls.length > 0) {
+            for (const tc of toolCalls) {
+                console.info(`[Agent Tool] Dispatched: ${tc.toolName} args=${JSON.stringify(tc.args)}`);
+            }
+        }
+
+        // 2. Extract final assistant text reply
         const reply = result.content.reduce((acc: string, c) => {
             if ("text" in c) {
                 return acc + c.text;
@@ -46,18 +62,22 @@ export class Chat implements ChatAgent {
         }, "");
 
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;
-        void saveChatMessage({
+
+        // 3. Save incoming user message
+        await saveChatMessage({
             sessionId,
             role: "user",
             content: this.buildContext(ctx),
             sender: ctx.sender,
         });
 
+        // 4. Save assistant reply along with dispatched toolCalls
         if (reply) {
-            void saveChatMessage({
+            await saveChatMessage({
                 sessionId,
                 role: "assistant",
                 content: reply,
+                toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
             });
         }
 
