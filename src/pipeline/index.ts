@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { MongoClient } from "mongodb";
 import mongoose from "mongoose";
 import { PIPELINE_CONFIG } from "./config";
@@ -7,6 +6,7 @@ import { extractAndDenoise, buildGlobalAuthorRegistry } from "./tasks/extractor"
 import { disentangleThreads } from "./tasks/disentangle";
 import { summarizeThread } from "./tasks/summarizer";
 import { buildKnowledgeDocuments, loadKnowledgeDocuments, formatKnowledgeMarkdown } from "./tasks/loader";
+import { getDbCheckpoint, updateDbCheckpoint, resetDbCheckpoint } from "../databases/models/checkpoint";
 
 export {
     extractAndDenoise,
@@ -35,28 +35,6 @@ export interface PipelineStats {
     totalLoadedDocs: number;
 }
 
-interface CheckpointState {
-    completedDates: string[];
-    lastUpdated: string;
-    totalExtracted: number;
-}
-
-function loadCheckpoint(file: string): CheckpointState {
-    if (fs.existsSync(file)) {
-        try {
-            return JSON.parse(fs.readFileSync(file, "utf-8")) as CheckpointState;
-        } catch {
-            // Ignore parse errors and return fresh state
-        }
-    }
-    return { completedDates: [], lastUpdated: new Date().toISOString(), totalExtracted: 0 };
-}
-
-function saveCheckpoint(file: string, state: CheckpointState) {
-    state.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(file, JSON.stringify(state, null, 2), "utf-8");
-}
-
 export async function runPipeline(options: PipelineOptions = {}): Promise<PipelineStats> {
     const isDryRun = options.dryRun ?? false;
     const isResume = options.resume ?? true;
@@ -73,10 +51,20 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
     if (targetDateArg) console.info(`- Target Date: ${targetDateArg}`);
     console.info("==================================================\n");
 
-    const checkpoint = isResume ? loadCheckpoint(PIPELINE_CONFIG.checkpointFile) : { completedDates: [], lastUpdated: "", totalExtracted: 0 };
-    const processedSet = new Set(checkpoint.completedDates);
+    // 1. Connect to Target Database first (for Checkpoint SSOT and Knowledge Storage)
+    if (mongoose.connection.readyState !== 1) {
+        await mongoose.connect(PIPELINE_CONFIG.target.uri);
+    }
 
-    // 1. Connect to source MongoDB
+    if (!isResume && !isDryRun) {
+        await resetDbCheckpoint();
+    }
+
+    // 2. Fetch Checkpoint from Database as Single Source of Truth
+    const dbCheckpoint = isResume ? await getDbCheckpoint() : { completedDates: [], totalExtracted: 0 };
+    const processedSet = new Set<string>(dbCheckpoint.completedDates);
+
+    // 3. Connect to source MongoDB
     if (!PIPELINE_CONFIG.source.uri) {
         throw new Error("SOURCE_MONGODB_URI environment variable is required.");
     }
@@ -87,12 +75,12 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
     const sourceDb = sourceClient.db(PIPELINE_CONFIG.source.dbName);
     const sourceCol = sourceDb.collection<RawMessageDoc>(PIPELINE_CONFIG.source.collectionName);
 
-    // 2. Pre-index global author registry from historical system events
+    // 4. Pre-index global author registry from historical system events
     console.info("Pre-indexing global author registry from historical events...");
     const globalAuthors = await buildGlobalAuthorRegistry(sourceCol);
     console.info(`Indexed ${globalAuthors.size} distinct authors in global registry.`);
 
-    // 3. Fetch distinct dates
+    // 5. Fetch distinct dates
     let dates: string[] = [];
     if (targetDateArg) {
         dates = await sourceCol.distinct("date", { date: { $regex: targetDateArg } });
@@ -140,6 +128,9 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
 
             if (!rawDocs.length) {
                 processedSet.add(dateStr);
+                if (!isDryRun) {
+                    await updateDbCheckpoint({ completedDate: dateStr, extractedCount: 0 });
+                }
                 continue;
             }
 
@@ -156,8 +147,9 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
             if (!threads.length) {
                 console.info("  - No discussion threads formed on this date.");
                 processedSet.add(dateStr);
-                checkpoint.completedDates = Array.from(processedSet);
-                if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
+                if (!isDryRun) {
+                    await updateDbCheckpoint({ completedDate: dateStr, extractedCount: 0 });
+                }
                 continue;
             }
 
@@ -198,16 +190,18 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
                 console.info(`  - Target DB: ${inserted} inserted, ${updated} updated.`);
             }
 
-            // Mark date as fully completed only if no exceptions occurred
+            // Mark date as fully completed in Database (SSOT)
             processedSet.add(dateStr);
-            checkpoint.completedDates = Array.from(processedSet);
-            checkpoint.totalExtracted += extractedItems.length;
-            if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
+
+            if (!isDryRun) {
+                await updateDbCheckpoint({
+                    completedDate: dateStr,
+                    extractedCount: extractedItems.length,
+                });
+            }
         } catch (err) {
             console.error(`  [Pipeline Error] Failed to process date ${dateStr}:`, err);
             console.warn(`  [Checkpoint] Date ${dateStr} excluded from completed list; will be retried on next resume.`);
-            // Save progress of all previously completed dates so far
-            if (!isDryRun) saveCheckpoint(PIPELINE_CONFIG.checkpointFile, checkpoint);
         }
     }
 
