@@ -3,13 +3,14 @@ import { MongoClient } from "mongodb";
 import mongoose from "mongoose";
 import { PIPELINE_CONFIG } from "./config";
 import type { RawMessageDoc, ExtractedKnowledge } from "./types";
-import { extractAndDenoise } from "./tasks/extractor";
+import { extractAndDenoise, buildGlobalAuthorRegistry } from "./tasks/extractor";
 import { disentangleThreads } from "./tasks/disentangle";
 import { summarizeThread } from "./tasks/summarizer";
 import { buildKnowledgeDocuments, loadKnowledgeDocuments, formatKnowledgeMarkdown } from "./tasks/loader";
 
 export {
     extractAndDenoise,
+    buildGlobalAuthorRegistry,
     disentangleThreads,
     summarizeThread,
     buildKnowledgeDocuments,
@@ -86,7 +87,12 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
     const sourceDb = sourceClient.db(PIPELINE_CONFIG.source.dbName);
     const sourceCol = sourceDb.collection<RawMessageDoc>(PIPELINE_CONFIG.source.collectionName);
 
-    // 2. Fetch distinct dates
+    // 2. Pre-index global author registry from historical system events
+    console.info("Pre-indexing global author registry from historical events...");
+    const globalAuthors = await buildGlobalAuthorRegistry(sourceCol);
+    console.info(`Indexed ${globalAuthors.size} distinct authors in global registry.`);
+
+    // 3. Fetch distinct dates
     let dates: string[] = [];
     if (targetDateArg) {
         dates = await sourceCol.distinct("date", { date: { $regex: targetDateArg } });
@@ -137,7 +143,7 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
         }
 
         // Task 1: Extract, Denoise & Merge
-        const mergedBlocks = extractAndDenoise(rawDocs);
+        const mergedBlocks = extractAndDenoise(rawDocs, globalAuthors);
         stats.totalMergedBlocks += mergedBlocks.length;
         console.info(`  - Merged into blocks: ${mergedBlocks.length}`);
 
