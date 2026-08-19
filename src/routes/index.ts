@@ -5,7 +5,7 @@ export const server = new Elysia()
         status: "ok",
         service: "nymph",
     }))
-    .get("/health", () => ({
+    .get("/healthz", () => ({
         status: "healthy",
         timestamp: new Date().toISOString(),
     }));
