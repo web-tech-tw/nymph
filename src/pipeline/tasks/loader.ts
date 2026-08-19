@@ -115,7 +115,6 @@ export async function loadKnowledgeDocuments(
 
     for (const doc of docs) {
         const filter = {
-            "metadata.topic": doc.metadata.topic,
             "metadata.sourceDateRange.start": doc.metadata.sourceDateRange?.start,
         };
 
