@@ -35,17 +35,10 @@ export interface McpServerConfig {
 const activeMcpClients: MCPClient[] = [];
 
 /**
- * Get the target MCP TOML file path.
- * Precedence: explicit argument > MCP_CONFIG_PATH > MCP_TOML_PATH > "./mcp.toml"
- */
-export function getMcpFilePath(customPath?: string): string {
-    return customPath || Bun.env.MCP_CONFIG_PATH || Bun.env.MCP_TOML_PATH || "./mcp.toml";
-}
-
-/**
  * Reads and parses MCP server configurations strictly from a TOML file.
  */
-export async function getMcpServerConfigsFromFile(filePath = getMcpFilePath()): Promise<McpServerConfig[]> {
+export async function getMcpServerConfigsFromFile(filePath = Bun.env.MCP_CONFIG_PATH || "./mcp.toml"): Promise<McpServerConfig[]> {
+
     const file = Bun.file(filePath);
     const exists = await file.exists();
 
@@ -217,7 +210,11 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
 /**
  * Initialize all configured MCP clients from TOML file and return a combined Record of tools.
  */
-export async function loadMcpTools(configs?: McpServerConfig[], filePath = getMcpFilePath()): Promise<Record<string, unknown>> {
+export async function loadMcpTools(
+    configs?: McpServerConfig[],
+    filePath = Bun.env.MCP_CONFIG_PATH || "./mcp.toml",
+): Promise<Record<string, unknown>> {
+
     const serverConfigs = configs ?? (await getMcpServerConfigsFromFile(filePath));
     const combinedTools: Record<string, unknown> = {};
 
