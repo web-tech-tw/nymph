@@ -228,10 +228,42 @@ export function mergeContiguousMessages(
 }
 
 /**
+ * Build a global author registry from deterministic historical system events
+ */
+export async function buildGlobalAuthorRegistry(
+    collection: { find: (query: object, options?: object) => { toArray: () => Promise<Array<{ content: string }>> } },
+): Promise<Set<string>> {
+    const systemDocs = await collection
+        .find(
+            { content: { $regex: "(加入聊天|退出聊天|已收回訊息|您已收回訊息)$" } },
+            { projection: { content: 1 } },
+        )
+        .toArray();
+
+    const authors = new Set<string>();
+    for (const doc of systemDocs) {
+        for (const { suffix } of SYSTEM_SUFFIXES) {
+            if (doc.content.endsWith(suffix)) {
+                const name = doc.content.slice(0, doc.content.length - suffix.length).trim();
+                if (name) authors.add(name);
+                break;
+            }
+        }
+    }
+    return authors;
+}
+
+/**
  * Process a batch of raw messages into merged message blocks
  */
-export function extractAndDenoise(rawDocs: RawMessageDoc[]): MergedMessageBlock[] {
-    const knownAuthors = collectKnownAuthors(rawDocs.map((d) => d.content));
+export function extractAndDenoise(
+    rawDocs: RawMessageDoc[],
+    globalAuthors?: Set<string>,
+): MergedMessageBlock[] {
+    const dailyAuthors = collectKnownAuthors(rawDocs.map((d) => d.content));
+    const knownAuthors = globalAuthors
+        ? new Set([...globalAuthors, ...dailyAuthors])
+        : dailyAuthors;
     const parsed = rawDocs.map((doc) => parseRawMessage(doc, knownAuthors));
     return mergeContiguousMessages(parsed);
 }
