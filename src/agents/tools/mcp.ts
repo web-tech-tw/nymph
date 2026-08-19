@@ -115,6 +115,20 @@ function parseRawServerConfig(serverName: string, rawDef: Record<string, unknown
     };
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+            reject(new Error(errorMsg));
+        }, ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+        if (timer) {
+            clearTimeout(timer);
+        }
+    });
+}
+
 /**
  * Connect to a single MCP server with retry logic and exponential backoff.
  */
@@ -129,36 +143,53 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
     const maxRetries = Math.max(0, config.maxRetries ?? config.max_retries ?? 2);
     const attempts = maxRetries + 1;
     const baseDelayMs = Math.max(100, (config.retryDelay ?? config.retry_delay ?? 1.5) * 1000);
+    const timeoutSec = config.startupTimeout ?? config.startup_timeout ?? 10;
+    const timeoutMs = Math.max(500, timeoutSec * 1000);
 
     let lastError: Error | unknown = null;
 
     for (let attempt = 0; attempt < attempts; attempt++) {
         let client: MCPClient | undefined;
         try {
-            if (config.transport.type === "http" || config.transport.type === "sse") {
-                client = await createMCPClient({
-                    transport: {
-                        type: config.transport.type,
-                        url: config.transport.url,
-                        headers: config.transport.headers,
-                    },
-                });
-            } else if (config.transport.type === "stdio") {
-                const stdioTransport = new StdioClientTransport({
-                    command: config.transport.command,
-                    args: config.transport.args,
-                    cwd: config.transport.cwd,
-                    env: config.transport.env,
-                });
-                client = await createMCPClient({
-                    transport: stdioTransport,
-                });
-            } else {
-                console.warn(`[MCP] Server '${serverName}' has unsupported transport type.`);
-                return {};
-            }
+            console.info(`[MCP] Connecting to server '${serverName}' (attempt ${attempt + 1}/${attempts}, timeout ${timeoutSec}s)...`);
 
-            const tools = await client.tools();
+            const connectPromise = (async () => {
+                let mcpClient: MCPClient;
+                if (config.transport.type === "http" || config.transport.type === "sse") {
+                    mcpClient = await createMCPClient({
+                        transport: {
+                            type: config.transport.type,
+                            url: config.transport.url,
+                            headers: config.transport.headers,
+                        },
+                    });
+                } else if (config.transport.type === "stdio") {
+                    const stdioTransport = new StdioClientTransport({
+                        command: config.transport.command,
+                        args: config.transport.args,
+                        cwd: config.transport.cwd,
+                        env: config.transport.env,
+                    });
+                    mcpClient = await createMCPClient({
+                        transport: stdioTransport,
+                    });
+                } else {
+                    throw new Error("Unsupported transport type.");
+                }
+
+                client = mcpClient;
+                const tools = await mcpClient.tools();
+                return { client: mcpClient, tools };
+            })();
+
+            const result = await withTimeout(
+                connectPromise,
+                timeoutMs,
+                `Connection timed out after ${timeoutSec}s`,
+            );
+
+            client = result.client;
+            const tools = result.tools;
             const toolCount = Object.keys(tools).length;
 
             activeMcpClients.push(client);
