@@ -25,11 +25,12 @@ pnpm-debug.log*
 # Lock file
 package-lock.json
 
-# Environment variables
+# Environment variables & secrets
 .env
 .env.local
 .env.*.local
 !.env.sample
+mcp.toml
+!mcp.toml.sample
 
-# Pipeline checkpoint
-.pipeline_checkpoint.json
+

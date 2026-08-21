@@ -45,7 +45,9 @@
   "type": "module",
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.39",
+    "@ai-sdk/mcp": "^2.0.33",
     "@line/bot-sdk": "^11.2.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "ai": "^7.0.66",
     "dayjs": "^1.11.21",
     "discord.js": "^14.27.0",

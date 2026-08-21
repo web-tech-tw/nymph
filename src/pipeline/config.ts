@@ -21,5 +21,4 @@ export const PIPELINE_CONFIG = {
         threadGapMinutes: 10,
         minThreadMessages: 2,
     },
-    checkpointFile: ".pipeline_checkpoint.json",
 };
