@@ -139,6 +139,8 @@ export function toolDiscoverTools(getTools: () => ToolSet | Record<string, unkno
                     const isBuiltin =
                         name === "currentDateTime" ||
                         name === "knowledgeDocs" ||
+                        name === "searchChatHistory" ||
+                        name === "search_chat_history" ||
                         name === "discover_tools" ||
                         name === "discoverTools" ||
                         name === "get_tool_info" ||
@@ -225,15 +227,19 @@ export function toolGetToolInfo(getTools: () => ToolSet | Record<string, unknown
                 const allTools = getTools();
                 const target = tool_name.trim();
                 const targetLower = target.toLowerCase();
+                const targetNormalized = targetLower.replace(/_/g, "");
 
                 let foundEntry: [string, unknown] | undefined = undefined;
 
                 for (const [name, toolObj] of Object.entries(allTools)) {
-                    if (name === target || name.toLowerCase() === targetLower) {
+                    const nameLower = name.toLowerCase();
+                    const nameNormalized = nameLower.replace(/_/g, "");
+
+                    if (name === target || nameLower === targetLower || nameNormalized === targetNormalized) {
                         foundEntry = [name, toolObj];
                         break;
                     }
-                    if (name.includes("_") && name.toLowerCase().endsWith(`_${targetLower}`)) {
+                    if (name.includes("_") && (nameLower.endsWith(`_${targetLower}`) || nameNormalized.endsWith(targetNormalized))) {
                         foundEntry = [name, toolObj];
                         break;
                     }
@@ -254,6 +260,8 @@ export function toolGetToolInfo(getTools: () => ToolSet | Record<string, unknown
                 const isBuiltin =
                     name === "currentDateTime" ||
                     name === "knowledgeDocs" ||
+                    name === "searchChatHistory" ||
+                    name === "search_chat_history" ||
                     name === "discover_tools" ||
                     name === "discoverTools" ||
                     name === "get_tool_info" ||

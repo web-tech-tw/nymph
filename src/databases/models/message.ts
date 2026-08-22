@@ -100,3 +100,106 @@ export async function saveChatMessage(params: {
         console.error("[Database] Failed to save chat message:", error);
     }
 }
+
+export interface SearchChatHistoryQueryOptions {
+    query?: string;
+    role?: "all" | "user" | "assistant" | string;
+    sessionId?: string;
+    limit?: number;
+}
+
+export interface ChatHistorySearchResult {
+    total: number;
+    returned?: number;
+    messages: Array<{
+        turn?: number;
+        role: string;
+        content: string;
+        sessionId?: string;
+        createdAt?: string;
+        sender?: { id?: string; nickname?: string };
+    }>;
+    message?: string;
+}
+
+export async function searchChatHistoryMessages(
+    options: SearchChatHistoryQueryOptions = {},
+): Promise<ChatHistorySearchResult> {
+    if (!isDatabaseConnected()) {
+        return {
+            total: 0,
+            messages: [],
+            message: "No conversation history available.",
+        };
+    }
+
+    try {
+        const { query = "", role = "all", sessionId, limit = 10 } = options;
+        const sessionFilter: Record<string, unknown> = {};
+        if (sessionId && sessionId.trim()) {
+            sessionFilter.sessionId = sessionId.trim();
+        }
+
+        const totalInScope = await ChatMessageModel.countDocuments(sessionFilter);
+        if (totalInScope === 0) {
+            return {
+                total: 0,
+                messages: [],
+                message: "No conversation history available.",
+            };
+        }
+
+        const filter: Record<string, unknown> = { ...sessionFilter };
+        const roleLower = (role || "all").trim().toLowerCase();
+        if (roleLower === "user" || roleLower === "assistant") {
+            filter.role = roleLower;
+        }
+
+        const queryTrimmed = query.trim();
+        if (queryTrimmed) {
+            const escaped = queryTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            filter.content = { $regex: escaped, $options: "i" };
+        }
+
+        const effectiveLimit = Math.max(1, Math.min(limit, 50));
+        const totalMatches = await ChatMessageModel.countDocuments(filter);
+
+        if (totalMatches === 0) {
+            return {
+                total: 0,
+                messages: [],
+                message: queryTrimmed
+                    ? `No messages matching query '${queryTrimmed}' were found.`
+                    : "No matching messages found.",
+            };
+        }
+
+        const docs = await ChatMessageModel.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(effectiveLimit)
+            .lean();
+
+        const reversed = docs.reverse();
+        const matches = reversed.map((doc, idx) => ({
+            turn: idx + 1,
+            role: doc.role,
+            content: doc.content,
+            sessionId: doc.sessionId,
+            createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
+            sender: doc.sender?.nickname || doc.sender?.id ? doc.sender : undefined,
+        }));
+
+        return {
+            total: totalMatches,
+            returned: matches.length,
+            messages: matches,
+        };
+    } catch (error) {
+        console.error("[Database] Failed to search chat history:", error);
+        return {
+            total: 0,
+            messages: [],
+            message: "Failed to search chat history due to a database error.",
+        };
+    }
+}

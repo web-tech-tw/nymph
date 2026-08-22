@@ -42,6 +42,7 @@ describe("Tool Perception Meta-Tools", () => {
     const mockToolMap: Record<string, unknown> = {
         currentDateTime: { description: "Get current date and time" },
         knowledgeDocs: dummyKnowledgeTool,
+        searchChatHistory: { description: "Search past messages in the conversation history" },
         calculateFormula: dummyCalculateTool,
         github_search_repos: dummyMcpTool,
     };
@@ -119,8 +120,9 @@ describe("Tool Perception Meta-Tools", () => {
         test("should list all tools when no query or filter is provided", async () => {
             const res = (await (discoverTool.execute as AnyAsyncFn)({})) as string;
             const parsed = JSON.parse(res);
-            expect(parsed.total).toBe(4);
+            expect(parsed.total).toBe(5);
             expect(parsed.tools.map((t: { name: string }) => t.name)).toContain("knowledgeDocs");
+            expect(parsed.tools.map((t: { name: string }) => t.name)).toContain("searchChatHistory");
             expect(parsed.tools.map((t: { name: string }) => t.name)).toContain("calculateFormula");
             expect(parsed.tools.map((t: { name: string }) => t.name)).toContain("github_search_repos");
         });
@@ -136,7 +138,8 @@ describe("Tool Perception Meta-Tools", () => {
         test("should filter tools by server origin (builtin vs mcp server)", async () => {
             const builtinRes = (await (discoverTool.execute as AnyAsyncFn)({ server: "builtin" })) as string;
             const builtinParsed = JSON.parse(builtinRes);
-            expect(builtinParsed.total).toBe(3);
+            expect(builtinParsed.total).toBe(4);
+            expect(builtinParsed.tools.map((t: { name: string }) => t.name)).toContain("searchChatHistory");
 
             const mcpRes = (await (discoverTool.execute as AnyAsyncFn)({ server: "github" })) as string;
             const mcpParsed = JSON.parse(mcpRes);
@@ -165,6 +168,14 @@ describe("Tool Perception Meta-Tools", () => {
             expect(parsed.parameters.type).toBe("object");
             expect(parsed.parameters.properties.query.type).toBe("string");
             expect(parsed.parameters.required).toContain("query");
+        });
+
+        test("should find tool by snake_case name or alias", async () => {
+            const res = (await (getToolInfo.execute as AnyAsyncFn)({ tool_name: "search_chat_history" })) as string;
+            const parsed = JSON.parse(res);
+            expect(parsed.name).toBe("searchChatHistory");
+            expect(parsed.source).toBe("builtin");
+            expect(parsed.description).toContain("Search past messages");
         });
 
         test("should find MCP tool by suffix or exact name", async () => {
@@ -214,6 +225,7 @@ describe("Tool Perception Meta-Tools", () => {
             const allTools = await getAllTools([]);
             expect(allTools.currentDateTime).toBeDefined();
             expect(allTools.knowledgeDocs).toBeDefined();
+            expect(allTools.searchChatHistory).toBeDefined();
             expect(allTools.discoverTools).toBeDefined();
             expect(allTools.getToolInfo).toBeDefined();
             expect(allTools.inspectMcpServers).toBeDefined();
