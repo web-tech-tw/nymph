@@ -1,8 +1,6 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
 import { connectDatabase } from "./src/databases/connection";
-import { Chat } from "./src/agents/chat";
+import { createChatAgent } from "./src/agents/chat";
 import { getAllTools, closeMcpClients } from "./src/agents/tools";
-import { buildAnthropicProviderOptions } from "./src/utils/prompts";
 import { GlobalProvider } from "./src/providers/global";
 import { DiscordProvider } from "./src/providers/discord";
 import { LineProvider } from "./src/providers/line";
@@ -10,25 +8,7 @@ import { server } from "./src/routes";
 import type { ChatContext } from "./src/types/provider";
 
 await connectDatabase();
-
-const anthropic = createAnthropic({
-    apiKey: Bun.env.ANTHROPIC_API_KEY,
-    baseURL: Bun.env.ANTHROPIC_BASE_URL,
-});
-
-const tools = await getAllTools();
-
-const settingsFile = Bun.file("./settings.xml");
-const providerOptions = buildAnthropicProviderOptions({
-    thinking: Bun.env.ANTHROPIC_THINKING,
-});
-
-const chatAgent = new Chat({
-    model: anthropic(Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5"),
-    instructions: await settingsFile.text(),
-    toolSet: tools,
-    providerOptions,
-});
+await getAllTools();
 
 const providers = [
     new DiscordProvider({
@@ -45,7 +25,8 @@ const providers = [
 const provider = new GlobalProvider(providers);
 
 provider.onMessage(async (ctx: ChatContext) => {
-    const reply = await chatAgent.replyMessage(ctx);
+    const agent = await createChatAgent();
+    const reply = await agent.replyMessage(ctx);
     await ctx.reply(reply);
 });
 

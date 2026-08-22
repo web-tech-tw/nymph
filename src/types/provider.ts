@@ -2,6 +2,7 @@ export const PlatformName = {
     Global: "Global",
     Discord: "Discord",
     LINE: "LINE",
+    MCP: "MCP",
 } as const;
 
 export type PlatformName = (typeof PlatformName)[keyof typeof PlatformName];
