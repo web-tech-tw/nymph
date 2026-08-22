@@ -27,6 +27,7 @@ const chatAgent = new Chat({
 const providers = [
     new DiscordProvider({
         token: Bun.env.DISCORD_BOT_TOKEN || "",
+        presence: Bun.env.DISCORD_PRESENCE || "",
     }),
     new LineProvider({
         token: Bun.env.LINE_CHANNEL_ACCESS_TOKEN || "",
