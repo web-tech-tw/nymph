@@ -12,6 +12,7 @@ export class Chat implements ChatAgent {
             model: params.model,
             instructions: params.instructions,
             tools: params.toolSet,
+            providerOptions: params.providerOptions,
         });
     }
 

@@ -2,6 +2,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { connectDatabase } from "./src/databases/connection";
 import { Chat } from "./src/agents/chat";
 import { getAllTools, closeMcpClients } from "./src/agents/tools";
+import { buildAnthropicProviderOptions } from "./src/utils/prompts";
 import { GlobalProvider } from "./src/providers/global";
 import { DiscordProvider } from "./src/providers/discord";
 import { LineProvider } from "./src/providers/line";
@@ -18,10 +19,15 @@ const anthropic = createAnthropic({
 const tools = await getAllTools();
 
 const settingsFile = Bun.file("./settings.xml");
+const providerOptions = buildAnthropicProviderOptions({
+    thinking: Bun.env.ANTHROPIC_THINKING,
+});
+
 const chatAgent = new Chat({
     model: anthropic(Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5"),
     instructions: await settingsFile.text(),
     toolSet: tools,
+    providerOptions,
 });
 
 const providers = [

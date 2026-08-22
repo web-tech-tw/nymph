@@ -3,10 +3,10 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { PIPELINE_CONFIG } from "../config";
 import type { DiscussionThread, ExtractedKnowledge } from "../types";
-import { ANTHROPIC_CACHE_CONTROL } from "../../utils/prompts";
+import { buildAnthropicProviderOptions } from "../../utils/prompts";
 
 const anthropic = createAnthropic({
-    apiKey: PIPELINE_CONFIG.llm.apiKey || Bun.env.ANTHROPIC_API_KEY,
+    apiKey: PIPELINE_CONFIG.llm.apiKey,
     baseURL: PIPELINE_CONFIG.llm.baseURL,
 });
 
@@ -76,11 +76,16 @@ export async function summarizeThread(
     );
 
     try {
+        const providerOptions = buildAnthropicProviderOptions({
+            thinking: PIPELINE_CONFIG.llm.thinking,
+            cacheControl: true,
+        });
+
         const { object } = await generateObject({
             model: anthropic(modelName),
             schema: TechnicalSummarySchema,
             system: EXTRACTION_SYSTEM_PROMPT,
-            providerOptions: ANTHROPIC_CACHE_CONTROL,
+            providerOptions,
             prompt: `Analyze the following chat transcript and perform structured technical extraction:\n\nDate: ${thread.date}\nParticipants: ${thread.participants.join(", ")}\n\n[Chat Transcript]\n${chatTranscript}`,
         });
 
