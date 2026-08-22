@@ -1,14 +1,15 @@
 # Nymph
 
-Nymph 是一個由 AI 驅動的多功能自動化機器人，旨在協助自動化資源管理、活動監控以及提供即時支援。
+Nymph 是一個由社群驅動的資深技術顧問智慧體。
 
 ![Nymph Avatar](avatar.png)
 
 ## 主要功能
 
-* **多平台整合**：支援 Line, Discord 的訊息監聽與串接。
-* **AI Agent 核心**：整合 Anthropic Claude，提供智慧對話功能。
-* **對話記憶**：基於 MongoDB 儲存對話歷史，支援語境理解。
+* **多平台整合**：支援 LINE、Discord 等社群平台的訊息監聽與互動。
+* **資深顧問核心**：整合 Anthropic Claude，具備深度技術理解與專業架構諮詢能力。
+* **MCP 工具擴充**：支援 Model Context Protocol (MCP) 標準，無縫串接外部工具與資料源。
+* **對話記憶**：基於 MongoDB 儲存對話歷史，支援多輪對話與語境理解。
 
 ## 參與貢獻
 
@@ -17,3 +18,4 @@ Nymph 是一個由 AI 驅動的多功能自動化機器人，旨在協助自動�
 ## 授權
 
 MIT — 詳情請參閱 `LICENSE` 文件。
+
