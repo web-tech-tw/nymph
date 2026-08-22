@@ -1,4 +1,5 @@
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
+import type { ToolSet } from "ai";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { snakeToCamelCase } from "../../utils/text";
 
@@ -31,7 +32,42 @@ export interface McpServerConfig {
     requestTimeout?: number;
 }
 
+export interface McpServerStatus {
+    name: string;
+    transport: "http" | "sse" | "stdio";
+    url?: string;
+    command?: string;
+    enabled: boolean;
+    required: boolean;
+    connected: boolean;
+    toolCount: number;
+    discoveredCount: number;
+    tools: string[];
+    error?: string;
+}
+
 const activeMcpClients: MCPClient[] = [];
+const mcpServerStatuses: Map<string, McpServerStatus> = new Map();
+
+/**
+ * Returns the status of all configured/loaded MCP servers.
+ */
+export function getMcpServerStatuses(): McpServerStatus[] {
+    return Array.from(mcpServerStatuses.values());
+}
+
+/**
+ * Returns the status of a specific MCP server by name.
+ */
+export function getMcpServerStatus(serverName: string): McpServerStatus | undefined {
+    const target = serverName.trim().toLowerCase();
+    for (const [name, status] of mcpServerStatuses.entries()) {
+        if (name.toLowerCase() === target) {
+            return status;
+        }
+    }
+    return undefined;
+}
 
 /**
  * Reads and parses MCP server configurations strictly from a TOML file.
@@ -163,11 +199,27 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Prom
 /**
  * Connect to a single MCP server with retry logic and exponential backoff.
  */
-async function connectServerWithRetry(config: McpServerConfig): Promise<Record<string, unknown>> {
+async function connectServerWithRetry(config: McpServerConfig): Promise<ToolSet> {
     const serverName = config.name;
+
+    const transportType = config.transport.type;
+    const url = "url" in config.transport ? config.transport.url : undefined;
+    const command = "command" in config.transport ? config.transport.command : undefined;
 
     if (config.enabled === false) {
         console.info(`[MCP] Server '${serverName}' is disabled in configuration. Skipping.`);
+        mcpServerStatuses.set(serverName, {
+            name: serverName,
+            transport: transportType,
+            url,
+            command,
+            enabled: false,
+            required: config.required === true,
+            connected: false,
+            toolCount: 0,
+            discoveredCount: 0,
+            tools: [],
+        });
         return {};
     }
 
@@ -235,7 +287,7 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
                 ? new Set(disallowedTools)
                 : null;
 
-            const scopedTools: Record<string, unknown> = {};
+            const scopedTools: ToolSet = {};
             for (const [toolName, toolObj] of Object.entries(tools)) {
                 if (allowedSet && !allowedSet.has(toolName)) {
                     continue;
@@ -244,11 +296,24 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
                     continue;
                 }
                 const key = `${serverName}_${toolName}`;
-                scopedTools[key] = toolObj;
+                scopedTools[key] = toolObj as ToolSet[string];
             }
 
             const scopedCount = Object.keys(scopedTools).length;
             console.info(`[MCP] Server '${serverName}' connected successfully with ${scopedCount} tool(s) (total discovered: ${toolCount}).`);
+
+            mcpServerStatuses.set(serverName, {
+                name: serverName,
+                transport: transportType,
+                url,
+                command,
+                enabled: true,
+                required: config.required === true,
+                connected: true,
+                toolCount: scopedCount,
+                discoveredCount: toolCount,
+                tools: Object.keys(scopedTools),
+            });
 
             return scopedTools;
         } catch (error) {
@@ -275,6 +340,20 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
 
     const finalErrorMsg = lastError instanceof Error ? lastError.message : String(lastError);
 
+    mcpServerStatuses.set(serverName, {
+        name: serverName,
+        transport: transportType,
+        url,
+        command,
+        enabled: true,
+        required: config.required === true,
+        connected: false,
+        toolCount: 0,
+        discoveredCount: 0,
+        tools: [],
+        error: finalErrorMsg,
+    });
+
     if (config.required) {
         console.error(`[MCP] Error: Required MCP server '${serverName}' failed to connect after ${attempts} attempt(s): ${finalErrorMsg}`);
         throw lastError;
@@ -293,10 +372,10 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
 export async function loadMcpTools(
     configs?: McpServerConfig[],
     filePath = Bun.env.MCP_CONFIG_PATH || "./mcp.toml",
-): Promise<Record<string, unknown>> {
+): Promise<ToolSet> {
 
     const serverConfigs = configs ?? (await getMcpServerConfigsFromFile(filePath));
-    const combinedTools: Record<string, unknown> = {};
+    const combinedTools: ToolSet = {};
 
     if (serverConfigs.length === 0) {
         return combinedTools;
@@ -317,6 +396,7 @@ export async function loadMcpTools(
  */
 export async function closeMcpClients(): Promise<void> {
     if (activeMcpClients.length === 0) {
+        mcpServerStatuses.clear();
         return;
     }
     console.info(`[MCP] Closing ${activeMcpClients.length} active MCP client(s)...`);
@@ -330,4 +410,5 @@ export async function closeMcpClients(): Promise<void> {
         }),
     );
     activeMcpClients.length = 0;
+    mcpServerStatuses.clear();
 }
