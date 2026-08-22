@@ -1,5 +1,6 @@
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { snakeToCamelCase } from "../../utils/text";
 
 export interface McpHttpTransportConfig {
     type: "http" | "sse";
@@ -22,14 +23,12 @@ export interface McpServerConfig {
     enabled?: boolean;
     required?: boolean;
     transport: McpTransportConfig;
+    allowedTools?: string[];
+    disallowedTools?: string[];
     maxRetries?: number;
-    max_retries?: number;
     retryDelay?: number;
-    retry_delay?: number;
     startupTimeout?: number;
-    startup_timeout?: number;
     requestTimeout?: number;
-    request_timeout?: number;
 }
 
 const activeMcpClients: MCPClient[] = [];
@@ -76,30 +75,60 @@ export async function getMcpServerConfigsFromFile(filePath = Bun.env.MCP_CONFIG_
     }
 }
 
+function normalizeDefKeys(rawDef: Record<string, unknown>): Record<string, unknown> {
+    const toCamel = (k: string) => (k.includes("_") || k.includes("-") ? snakeToCamelCase(k) : k);
+    const normalized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(rawDef)) {
+        const camelKey = toCamel(key);
+        if (camelKey === "transport" && value && typeof value === "object" && !Array.isArray(value)) {
+            const normalizedTransport: Record<string, unknown> = {};
+            for (const [tKey, tVal] of Object.entries(value as Record<string, unknown>)) {
+                normalizedTransport[toCamel(tKey)] = tVal;
+            }
+            normalized[camelKey] = normalizedTransport;
+        } else {
+            normalized[camelKey] = value;
+        }
+    }
+    return normalized;
+}
+
 function parseRawServerConfig(serverName: string, rawDef: Record<string, unknown>): McpServerConfig {
-    const enabled = rawDef.enabled !== false;
-    const required = rawDef.required === true;
-    const maxRetries = typeof rawDef.max_retries === "number" ? rawDef.max_retries : (typeof rawDef.maxRetries === "number" ? rawDef.maxRetries : 2);
-    const retryDelay = typeof rawDef.retry_delay === "number" ? rawDef.retry_delay : (typeof rawDef.retryDelay === "number" ? rawDef.retryDelay : 1.5);
+    const def = normalizeDefKeys(rawDef);
+
+    const enabled = def.enabled !== false;
+    const required = def.required === true;
+    const maxRetries = typeof def.maxRetries === "number" ? def.maxRetries : 2;
+    const retryDelay = typeof def.retryDelay === "number" ? def.retryDelay : 1.5;
+    const startupTimeout = typeof def.startupTimeout === "number" ? def.startupTimeout : undefined;
+    const requestTimeout = typeof def.requestTimeout === "number" ? def.requestTimeout : undefined;
+
+    const allowedTools = Array.isArray(def.allowedTools)
+        ? def.allowedTools.filter((item): item is string => typeof item === "string")
+        : undefined;
+
+    const disallowedTools = Array.isArray(def.disallowedTools)
+        ? def.disallowedTools.filter((item): item is string => typeof item === "string")
+        : undefined;
 
     let transport: McpTransportConfig;
 
-    if (rawDef.transport && typeof rawDef.transport === "object") {
-        transport = rawDef.transport as McpTransportConfig;
-    } else if (typeof rawDef.url === "string") {
-        const transportType = rawDef.type === "sse" ? "sse" : "http";
+    if (def.transport && typeof def.transport === "object") {
+        transport = def.transport as McpTransportConfig;
+    } else if (typeof def.url === "string") {
+        const transportType = def.type === "sse" ? "sse" : "http";
         transport = {
             type: transportType,
-            url: rawDef.url,
-            headers: rawDef.headers as Record<string, string> | undefined,
+            url: def.url,
+            headers: def.headers as Record<string, string> | undefined,
         };
     } else {
         transport = {
             type: "stdio",
-            command: typeof rawDef.command === "string" ? rawDef.command : "node",
-            args: Array.isArray(rawDef.args) ? (rawDef.args as string[]) : undefined,
-            cwd: typeof rawDef.cwd === "string" ? rawDef.cwd : undefined,
-            env: rawDef.env as Record<string, string> | undefined,
+            command: typeof def.command === "string" ? def.command : "node",
+            args: Array.isArray(def.args) ? (def.args as string[]) : undefined,
+            cwd: typeof def.cwd === "string" ? def.cwd : undefined,
+            env: def.env as Record<string, string> | undefined,
         };
     }
 
@@ -108,10 +137,12 @@ function parseRawServerConfig(serverName: string, rawDef: Record<string, unknown
         enabled,
         required,
         transport,
+        allowedTools,
+        disallowedTools,
         maxRetries,
         retryDelay,
-        startupTimeout: typeof rawDef.startup_timeout === "number" ? rawDef.startup_timeout : (rawDef.startupTimeout as number | undefined),
-        requestTimeout: typeof rawDef.request_timeout === "number" ? rawDef.request_timeout : (rawDef.requestTimeout as number | undefined),
+        startupTimeout,
+        requestTimeout,
     };
 }
 
@@ -140,10 +171,10 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
         return {};
     }
 
-    const maxRetries = Math.max(0, config.maxRetries ?? config.max_retries ?? 2);
+    const maxRetries = Math.max(0, config.maxRetries ?? 2);
     const attempts = maxRetries + 1;
-    const baseDelayMs = Math.max(100, (config.retryDelay ?? config.retry_delay ?? 1.5) * 1000);
-    const timeoutSec = config.startupTimeout ?? config.startup_timeout ?? 10;
+    const baseDelayMs = Math.max(100, (config.retryDelay ?? 1.5) * 1000);
+    const timeoutSec = config.startupTimeout ?? 10;
     const timeoutMs = Math.max(500, timeoutSec * 1000);
 
     let lastError: Error | unknown = null;
@@ -194,13 +225,31 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
 
             activeMcpClients.push(client);
 
-            console.info(`[MCP] Server '${serverName}' connected successfully with ${toolCount} tool(s).`);
+            const allowedTools = config.allowedTools;
+            const disallowedTools = config.disallowedTools;
+
+            const allowedSet = Array.isArray(allowedTools) && allowedTools.length > 0
+                ? new Set(allowedTools)
+                : null;
+            const disallowedSet = Array.isArray(disallowedTools) && disallowedTools.length > 0
+                ? new Set(disallowedTools)
+                : null;
 
             const scopedTools: Record<string, unknown> = {};
             for (const [toolName, toolObj] of Object.entries(tools)) {
+                if (allowedSet && !allowedSet.has(toolName)) {
+                    continue;
+                }
+                if (disallowedSet && disallowedSet.has(toolName)) {
+                    continue;
+                }
                 const key = `${serverName}_${toolName}`;
                 scopedTools[key] = toolObj;
             }
+
+            const scopedCount = Object.keys(scopedTools).length;
+            console.info(`[MCP] Server '${serverName}' connected successfully with ${scopedCount} tool(s) (total discovered: ${toolCount}).`);
+
             return scopedTools;
         } catch (error) {
             lastError = error;
