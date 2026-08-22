@@ -10,6 +10,8 @@ retry_delay = 1.5           # Base retry delay in seconds (exponential backoff)
 type = "http"               # "http" or "sse"
 url = "https://mcp.example.com/sse"
 headers = { Authorization = "Bearer your_token_here" }
+# allowed_tools = ["get_weather", "get_forecast"] # Whitelist: only include these tools
+# disallowed_tools = ["get_internal_metrics"]     # Blacklist: exclude these tools
 
 # Stdio Local Process Server Example (Required server)
 [mcp_servers.filesystem]
@@ -19,3 +21,5 @@ max_retries = 3
 retry_delay = 1.0
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-filesystem", "./public"]
+# allowed_tools = ["read_file", "list_directory"]
+# disallowed_tools = ["write_file", "delete_file"]
