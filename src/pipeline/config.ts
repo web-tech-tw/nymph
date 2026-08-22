@@ -10,8 +10,9 @@ export const PIPELINE_CONFIG = {
     },
     llm: {
         model: Bun.env.ETL_ANTHROPIC_MODEL || "claude-haiku-4-5",
-        apiKey: Bun.env.ANTHROPIC_API_KEY || "",
-        baseURL: Bun.env.ANTHROPIC_BASE_URL,
+        apiKey: Bun.env.ETL_ANTHROPIC_API_KEY || "",
+        baseURL: Bun.env.ETL_ANTHROPIC_BASE_URL,
+        thinking: Bun.env.ETL_ANTHROPIC_THINKING,
         concurrency: 10,
     },
     thresholds: {
