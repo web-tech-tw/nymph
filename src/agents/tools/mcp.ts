@@ -22,6 +22,10 @@ export interface McpServerConfig {
     enabled?: boolean;
     required?: boolean;
     transport: McpTransportConfig;
+    allowedTools?: string[];
+    allowed_tools?: string[];
+    disallowedTools?: string[];
+    disallowed_tools?: string[];
     maxRetries?: number;
     max_retries?: number;
     retryDelay?: number;
@@ -82,6 +86,16 @@ function parseRawServerConfig(serverName: string, rawDef: Record<string, unknown
     const maxRetries = typeof rawDef.max_retries === "number" ? rawDef.max_retries : (typeof rawDef.maxRetries === "number" ? rawDef.maxRetries : 2);
     const retryDelay = typeof rawDef.retry_delay === "number" ? rawDef.retry_delay : (typeof rawDef.retryDelay === "number" ? rawDef.retryDelay : 1.5);
 
+    const rawAllowed = rawDef.allowed_tools ?? rawDef.allowedTools;
+    const allowedTools = Array.isArray(rawAllowed)
+        ? rawAllowed.filter((item): item is string => typeof item === "string")
+        : undefined;
+
+    const rawDisallowed = rawDef.disallowed_tools ?? rawDef.disallowedTools;
+    const disallowedTools = Array.isArray(rawDisallowed)
+        ? rawDisallowed.filter((item): item is string => typeof item === "string")
+        : undefined;
+
     let transport: McpTransportConfig;
 
     if (rawDef.transport && typeof rawDef.transport === "object") {
@@ -108,6 +122,8 @@ function parseRawServerConfig(serverName: string, rawDef: Record<string, unknown
         enabled,
         required,
         transport,
+        allowedTools,
+        disallowedTools,
         maxRetries,
         retryDelay,
         startupTimeout: typeof rawDef.startup_timeout === "number" ? rawDef.startup_timeout : (rawDef.startupTimeout as number | undefined),
@@ -194,13 +210,31 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<Record<s
 
             activeMcpClients.push(client);
 
-            console.info(`[MCP] Server '${serverName}' connected successfully with ${toolCount} tool(s).`);
+            const allowedTools = config.allowedTools ?? config.allowed_tools;
+            const disallowedTools = config.disallowedTools ?? config.disallowed_tools;
+
+            const allowedSet = Array.isArray(allowedTools) && allowedTools.length > 0
+                ? new Set(allowedTools)
+                : null;
+            const disallowedSet = Array.isArray(disallowedTools) && disallowedTools.length > 0
+                ? new Set(disallowedTools)
+                : null;
 
             const scopedTools: Record<string, unknown> = {};
             for (const [toolName, toolObj] of Object.entries(tools)) {
+                if (allowedSet && !allowedSet.has(toolName)) {
+                    continue;
+                }
+                if (disallowedSet && disallowedSet.has(toolName)) {
+                    continue;
+                }
                 const key = `${serverName}_${toolName}`;
                 scopedTools[key] = toolObj;
             }
+
+            const scopedCount = Object.keys(scopedTools).length;
+            console.info(`[MCP] Server '${serverName}' connected successfully with ${scopedCount} tool(s) (total discovered: ${toolCount}).`);
+
             return scopedTools;
         } catch (error) {
             lastError = error;
