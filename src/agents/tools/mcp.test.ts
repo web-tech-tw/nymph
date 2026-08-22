@@ -149,22 +149,27 @@ disallowedTools = ["tool_c"]
             expect(Object.keys(tools)).toEqual(["test_mcp_tool_a"]);
         });
 
-        test("should support snake_case allowed_tools and disallowed_tools properties", async () => {
-            const configs: McpServerConfig[] = [
-                {
-                    name: "test_mcp",
-                    enabled: true,
-                    transport: {
-                        type: "http",
-                        url: "http://localhost:3000",
-                    },
-                    allowed_tools: ["tool_a", "tool_b"],
-                    disallowed_tools: ["tool_a"],
-                },
-            ];
+        test("should load tools when configured from TOML with snake_case allowed_tools and disallowed_tools", async () => {
+            const tomlContent = `
+[mcp_servers.test_mcp]
+enabled = true
+type = "http"
+url = "https://mcp.example.com/sse"
+allowed_tools = ["tool_a", "tool_b"]
+disallowed_tools = ["tool_a"]
+`;
+            const tmpPath = `/tmp/mcp_test_snake_load_${Date.now()}.toml`;
+            await Bun.write(tmpPath, tomlContent);
 
-            const tools = await loadMcpTools(configs);
-            expect(Object.keys(tools)).toEqual(["test_mcp_tool_b"]);
+            try {
+                const tools = await loadMcpTools(undefined, tmpPath);
+                expect(Object.keys(tools)).toEqual(["test_mcp_tool_b"]);
+            } finally {
+                const file = Bun.file(tmpPath);
+                if (await file.exists()) {
+                    await Bun.write(tmpPath, "");
+                }
+            }
         });
     });
 });
