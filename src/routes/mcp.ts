@@ -86,18 +86,18 @@ export function createNymphMcpServer(options?: NymphMcpServerOptions): McpServer
         },
     );
 
-    // 2. absorb_nymph_wisdom: Direct query to MongoDB knowledge collection
+    // 2. absorb_nymph_wisdom: Direct query to Nymph's knowledge base
     server.registerTool(
         "absorb_nymph_wisdom",
         {
             title: "Absorb Nymph Wisdom",
             description:
-                "Directly query the MongoDB engineering knowledge base for historical troubleshooting solutions, architecture decisions, and code snippets.",
+                "Directly query and absorb Nymph's engineering knowledge base for historical troubleshooting solutions, architecture decisions, and code snippets.",
             inputSchema: {
                 query: z
                     .string()
                     .describe(
-                        "Search keywords or technical questions to look up directly in the MongoDB knowledge base",
+                        "Search keywords or technical questions to look up directly in Nymph's knowledge base",
                     ),
                 category: z
                     .string()
