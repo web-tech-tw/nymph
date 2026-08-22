@@ -22,12 +22,14 @@ export class DiscordProvider implements BasePlatformProvider {
     readonly enabled: boolean;
 
     #token: string;
+    #presence: string;
     #client: Client | null = null;
     #messageCallbacks: MessageCallback[] = [];
     #commandCallbacks: CommandCallback[] = [];
 
     constructor(params: DiscordProviderParams) {
         this.#token = params.token;
+        this.#presence = params.presence || "萬眾一心";
         this.enabled = this.#token !== "";
     }
 
@@ -49,7 +51,7 @@ export class DiscordProvider implements BasePlatformProvider {
             console.info(`[DiscordProvider] Logged in as ${client.user?.tag}`);
             client.user?.setPresence({
                 status: PresenceUpdateStatus.Online,
-                activities: [{ type: ActivityType.Playing, name: "Nymph" }],
+                activities: [{ type: ActivityType.Playing, name: this.#presence }],
             });
         });
 
@@ -70,7 +72,7 @@ export class DiscordProvider implements BasePlatformProvider {
             if (!cleanContent) return;
 
             if (message.channel.isSendable()) {
-                await message.channel.sendTyping().catch(() => {});
+                await message.channel.sendTyping().catch(() => { });
             }
 
             const ctx: ChatContext = {
