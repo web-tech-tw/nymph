@@ -33,10 +33,13 @@ export interface UserProfile {
     [key: string]: unknown;
 }
 
+export type MessageContentType = "text" | "image";
+
 export interface ChatContext {
     platformName: PlatformName;
     roomId: string;
     sender: UserProfile;
+    type: MessageContentType;
     content: string;
     reply(content: string): Promise<void>;
 }
