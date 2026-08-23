@@ -18,17 +18,19 @@ Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣�
 ## 如何使用 Nymph 服務
 
 ### 1. 在 Discord 中使用
+* **邀請機器人**：點擊 [邀請 Nymph 至 Discord 伺服器](https://discord.com/oauth2/authorize?client_id=921702227016560690)。
 * **伺服器頻道**：在已加入 Nymph 的頻道中直接 `@Nymph`（或標註寧芙）並輸入你的問題。
 * **私訊諮詢**：直接向 Nymph 發送私訊 (DM) 進行一對一技術諮詢。
 
 ### 2. 在 LINE 中使用
-* 加入 Nymph 官方帳號或在已加入 Nymph 的社群中直接發送訊息，寧芙將自動辨識語境並回覆。
+* **加入好友**：點擊 [加入 Nymph 官方帳號](https://line.me/R/ti/p/@336jwweq)。
+* **社群交流**：在已加入 Nymph 的社群中直接發送訊息，寧芙將自動辨識語境並回覆。
 
 ### 3. 在個人開發工具中使用（透過 MCP 遠端串接）
 你可以透過 Model Context Protocol (MCP) 標準，將 Nymph 作為遠端技術顧問直接整合進你的編輯器或 AI 客戶端（如 Cursor、Claude Desktop、Antigravity 等）。
 
 #### 步驟一：申請 MCP 連線權杖 (Token)
-1. 開啟瀏覽器前往 Nymph 服務網站的權杖管理頁面（`/mcp/tokens`）。
+1. 開啟瀏覽器前往 Nymph 服務網站的權杖管理頁面（[https://web-tech.tw/nymph/mcp/tokens](https://web-tech.tw/nymph/mcp/tokens)）。
 2. 點擊「使用 Sara 登入」，透過臺灣網際網路技術推廣組織的 Sara 統一身分系統完成登入。
 3. 在管理介面中輸入權杖標籤（例如：`Cursor IDE` 或 `My MacBook`），點擊「簽發新權杖」。
 4. 複製產生的專屬權杖金鑰（Token）。
@@ -79,8 +81,7 @@ Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣�
 Nymph 由臺灣網際網路技術推廣組織 (Taiwan Web Technology Promotion Organization) 維護與推廣，旨在協助社群成員互相交流技術、傳承工程經驗與共同成長。
 
 * 官方網站：[web-tech.tw](https://web-tech.tw)
-* 統一認證平台：[web-tech.tw/sara](https://web-tech.tw/sara)
-* 參與交流：歡迎加入 Discord 或 LINE 社群與我們互動！
+* 機器人安裝：[Discord 機器人](https://discord.com/oauth2/authorize?client_id=921702227016560690)｜[LINE 官方帳號](https://line.me/R/ti/p/@336jwweq)
 
 ---
 
