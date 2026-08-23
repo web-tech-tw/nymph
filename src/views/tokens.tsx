@@ -34,6 +34,7 @@ export function TokensPage({
                             nickname: '',
                             avatarUrl: '',
                             email: '',
+                            saraHost: config.saraInteHost,
                             saraLoginUrl: config.saraInteHost,
 
                             // Token management state
@@ -314,7 +315,7 @@ export function TokensPage({
                             <nav class="flex items-center space-x-6" x-cloak>
                                 <template x-if="isLoggedIn">
                                     <a
-                                        x-bind:href="saraLoginUrl"
+                                        x-bind:href="saraHost"
                                         class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900"
                                     >
                                         <img
@@ -370,7 +371,7 @@ export function TokensPage({
                                         <img
                                             x-bind:src="avatarUrl"
                                             x-bind:alt="nickname"
-                                            title="來自 Gravatar 的大頭貼"
+                                            x-bind:title="nickname"
                                             class="rounded-full w-20 h-20 mx-auto md:w-16 md:h-16 shadow-sm border border-gray-100"
                                         />
                                     </div>
@@ -387,7 +388,7 @@ export function TokensPage({
                                 </div>
                                 <div class="p-6 bg-white border-b border-gray-200 text-right">
                                     <a
-                                        x-bind:href="saraLoginUrl"
+                                        x-bind:href="saraHost"
                                         class="inline-block bg-sky-500 shadow-md text-sm text-white font-bold py-3 md:px-8 px-4 hover:bg-sky-600 rounded"
                                     >
                                         前往 Sara
