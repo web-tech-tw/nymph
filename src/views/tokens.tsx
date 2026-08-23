@@ -362,10 +362,9 @@ export function TokensPage({
                         <div x-show="!isLoad && isLoggedIn" class="space-y-8">
                             {/* Profile Card */}
                             <div class="flex flex-col overflow-hidden shadow-md rounded">
-                                <div
-                                    class="px-6 py-4 bg-white border-b border-gray-200 font-bold"
-                                    x-text="'您好，' + nickname + '，這裡是您的個人資料：'"
-                                ></div>
+                                <div class="px-6 py-4 bg-white border-b border-gray-200 font-bold text-gray-900">
+                                    Nymph 眼中的你...
+                                </div>
                                 <div class="px-6 py-4 bg-white border-b border-gray-200 md:flex items-center">
                                     <div class="px-3 mb-3 md:mb-0 flex-shrink-0">
                                         <img
@@ -385,14 +384,6 @@ export function TokensPage({
                                         <span class="text-gray-600">Sara 系統使用者識別碼：</span>
                                         <span x-text="userId"></span>
                                     </div>
-                                </div>
-                                <div class="p-6 bg-white border-b border-gray-200 text-right">
-                                    <a
-                                        x-bind:href="saraHost"
-                                        class="inline-block bg-sky-500 shadow-md text-sm text-white font-bold py-3 md:px-8 px-4 hover:bg-sky-600 rounded"
-                                    >
-                                        前往 Sara
-                                    </a>
                                 </div>
                             </div>
 

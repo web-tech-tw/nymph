@@ -22,9 +22,6 @@ export class Chat implements ChatAgent {
     }
 
     private buildContext(ctx: ChatContext): string {
-        if (ctx.type === "image") {
-            return `[image:${ctx.content}]`;
-        }
         return ctx.content;
     }
 
@@ -89,6 +86,7 @@ export class Chat implements ChatAgent {
         await saveChatMessage({
             sessionId,
             role: "user",
+            type: ctx.type,
             content: this.buildContext(ctx),
             sender: ctx.sender,
         });
@@ -98,6 +96,7 @@ export class Chat implements ChatAgent {
             await saveChatMessage({
                 sessionId,
                 role: "assistant",
+                type: "text",
                 content: reply,
                 toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
             });
