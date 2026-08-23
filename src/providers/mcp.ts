@@ -12,7 +12,7 @@ import type { McpProviderParams } from "../types/mcp";
 import { server as defaultServer, type HttpServer } from "../routes";
 import { queryKnowledgeDocuments } from "../agents/tools/knowledge-docs";
 import { findAndTouchMcpToken } from "../databases/models/mcp-token";
-import { getUserProfile } from "../databases/models/user-profile";
+import { getUserProfile, type IUserProfile } from "../databases/models/user-profile";
 
 export class McpProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.MCP;
@@ -53,9 +53,15 @@ export class McpProvider implements BasePlatformProvider {
 
             const userId = tokenDoc.userId;
             const profile = await getUserProfile(userId);
-            const nickname = profile?.nickname || userId;
+            if (!profile) {
+                set.status = 401;
+                return new Response(JSON.stringify({ error: "Unauthorized: User profile not found" }), {
+                    status: 401,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
 
-            const mcpServer = this.createMcpServer(userId, nickname);
+            const mcpServer = this.createMcpServer(userId, profile);
             const transport = new WebStandardStreamableHTTPServerTransport({
                 sessionIdGenerator: undefined,
                 enableJsonResponse: true,
@@ -122,7 +128,7 @@ export class McpProvider implements BasePlatformProvider {
         // Responses are handled synchronously during tool call dispatch
     }
 
-    createMcpServer(userId: string, nickname: string): McpServer {
+    createMcpServer(userId: string, profile: IUserProfile): McpServer {
         const server = new McpServer({
             name: "nymph",
             version: "1.0.0",
@@ -150,7 +156,7 @@ export class McpProvider implements BasePlatformProvider {
                         roomId: userId,
                         sender: {
                             id: userId,
-                            nickname,
+                            nickname: profile.nickname,
                         },
                         type: "text",
                         content: prompt,
@@ -240,6 +246,48 @@ export class McpProvider implements BasePlatformProvider {
                             {
                                 type: "text",
                                 text: `Error querying knowledge base: ${msg}`,
+                            },
+                        ],
+                        isError: true,
+                    };
+                }
+            },
+        );
+
+        // 3. my_nymph_impression: Get Nymph's impression and profile of the current token holder
+        server.registerTool(
+            "my_nymph_impression",
+            {
+                title: "My Nymph Impression",
+                description:
+                    "Get Nymph's impression and profile information of the current MCP token holder (including userId, nickname, email, and avatar_hash).",
+                inputSchema: {},
+            },
+            async () => {
+                try {
+                    const data = {
+                        userId,
+                        nickname: profile.nickname,
+                        email: profile.email,
+                        avatar_hash: profile.avatar_hash,
+                    };
+
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify(data, null, 2),
+                            },
+                        ],
+                    };
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : String(error);
+                    console.error("[McpProvider] my_nymph_impression error:", error);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error retrieving Nymph impression: ${msg}`,
                             },
                         ],
                         isError: true,

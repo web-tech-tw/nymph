@@ -96,7 +96,7 @@ describe("McpProvider", () => {
         expect(json.result.serverInfo.name).toBe("nymph");
     });
 
-    it("should list consult_nymph_wisdom and absorb_nymph_wisdom tools", async () => {
+    it("should list consult_nymph_wisdom, absorb_nymph_wisdom, and my_nymph_impression tools", async () => {
         const res = await testServer.handle(
             new Request("http://localhost/mcp", {
                 method: "POST",
@@ -120,6 +120,36 @@ describe("McpProvider", () => {
         const toolNames = json.result.tools.map((t: { name: string }) => t.name);
         expect(toolNames).toContain("consult_nymph_wisdom");
         expect(toolNames).toContain("absorb_nymph_wisdom");
+        expect(toolNames).toContain("my_nymph_impression");
+    });
+
+    it("should call my_nymph_impression and return profile data", async () => {
+        const res = await testServer.handle(
+            new Request("http://localhost/mcp", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json, text/event-stream",
+                    Authorization: `Bearer ${testToken}`,
+                },
+                body: JSON.stringify({
+                    jsonrpc: "2.0",
+                    id: 25,
+                    method: "tools/call",
+                    params: {
+                        name: "my_nymph_impression",
+                        arguments: {},
+                    },
+                }),
+            }),
+        );
+
+        expect(res.status).toBe(200);
+        const json = JSON.parse(await res.text());
+        expect(json.result.content).toBeDefined();
+        const parsed = JSON.parse(json.result.content[0].text);
+        expect(parsed.userId).toBe(testUserId);
+        expect(parsed.nickname).toBe("Nymph");
     });
 
     it("should dispatch consult_nymph_wisdom with bound userId as sender", async () => {
@@ -261,6 +291,7 @@ describe("McpProvider", () => {
             const tools = await client.tools();
             expect(tools.consult_nymph_wisdom).toBeDefined();
             expect(tools.absorb_nymph_wisdom).toBeDefined();
+            expect(tools.my_nymph_impression).toBeDefined();
 
             const consultTool = tools.consult_nymph_wisdom;
             expect(consultTool).toBeDefined();

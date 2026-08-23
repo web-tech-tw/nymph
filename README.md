@@ -67,6 +67,7 @@ Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣�
 
 * `consult_nymph_wisdom`：向寧芙發起深入的技術諮詢、架構分析與除錯診斷。
 * `absorb_nymph_wisdom`：檢索並汲取社群歷年沉澱的工程知識庫、架構決策與解決方案。
+* `my_nymph_impression`：取得這份 MCP 連線權杖持有者的個人檔案。
 
 ---
 
