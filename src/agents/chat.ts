@@ -4,6 +4,10 @@ import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
 import { applyPromptCaching } from "../utils/prompts";
 
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { buildAnthropicProviderOptions } from "../utils/prompts";
+import { getActiveToolRegistry } from "./tools";
+
 export class Chat implements ChatAgent {
     private agent: ToolLoopAgent;
 
@@ -85,3 +89,30 @@ export class Chat implements ChatAgent {
         return reply;
     }
 }
+
+/**
+ * Creates a new Chat instance initialized with system settings and active tools.
+ */
+export async function createChatAgent(): Promise<Chat> {
+    const anthropic = createAnthropic({
+        apiKey: Bun.env.ANTHROPIC_API_KEY,
+        baseURL: Bun.env.ANTHROPIC_BASE_URL,
+    });
+
+    const settingsFile = Bun.file("./settings.xml");
+    const instructions = await settingsFile.text();
+
+    const providerOptions = buildAnthropicProviderOptions({
+        thinking: Bun.env.ANTHROPIC_THINKING,
+    });
+
+    const tools = getActiveToolRegistry();
+
+    return new Chat({
+        model: anthropic(Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5"),
+        instructions,
+        toolSet: tools,
+        providerOptions,
+    });
+}
+

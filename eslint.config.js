@@ -30,7 +30,7 @@ export default [
                 "error",
                 {
                     argsIgnorePattern: "^_",
-                    varsIgnorePattern: "^_"
+                    varsIgnorePattern: "^_|Html"
                 }
             ],
             "@typescript-eslint/no-explicit-any": "warn"
