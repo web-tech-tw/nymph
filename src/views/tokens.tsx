@@ -34,6 +34,7 @@ export function TokensPage({
                             nickname: '',
                             avatarUrl: '',
                             email: '',
+                            saraHost: config.saraInteHost,
                             saraLoginUrl: config.saraInteHost,
 
                             // Token management state
@@ -314,7 +315,7 @@ export function TokensPage({
                             <nav class="flex items-center space-x-6" x-cloak>
                                 <template x-if="isLoggedIn">
                                     <a
-                                        x-bind:href="saraLoginUrl"
+                                        x-bind:href="saraHost"
                                         class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900"
                                     >
                                         <img
@@ -370,7 +371,7 @@ export function TokensPage({
                                         <img
                                             x-bind:src="avatarUrl"
                                             x-bind:alt="nickname"
-                                            title="來自 Gravatar 的大頭貼"
+                                            x-bind:title="nickname"
                                             class="rounded-full w-20 h-20 mx-auto md:w-16 md:h-16 shadow-sm border border-gray-100"
                                         />
                                     </div>
@@ -387,7 +388,7 @@ export function TokensPage({
                                 </div>
                                 <div class="p-6 bg-white border-b border-gray-200 text-right">
                                     <a
-                                        x-bind:href="saraLoginUrl"
+                                        x-bind:href="saraHost"
                                         class="inline-block bg-sky-500 shadow-md text-sm text-white font-bold py-3 md:px-8 px-4 hover:bg-sky-600 rounded"
                                     >
                                         前往 Sara
@@ -400,7 +401,7 @@ export function TokensPage({
                                 <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                                     <div>
                                         <h2 class="font-bold text-gray-900">MCP 連線權杖管理</h2>
-                                        <p class="text-xs text-gray-500 mt-0.5">簽發並管理用於 Claude、Cursor 等工具的專屬連線權杖</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">簽發並管理用於 Antigravity、Claude Code/Desktop、Codex、Cursor 等工具的專屬連線權杖</p>
                                     </div>
                                 </div>
 
@@ -410,7 +411,7 @@ export function TokensPage({
                                         <input
                                             type="text"
                                             x-model="newTokenLabel"
-                                            placeholder="請輸入權杖名稱（例如：Cursor IDE、Claude Desktop）"
+                                            placeholder="請輸入權杖名稱（例如：Antigravity、Claude Code/Desktop、Codex、Cursor）"
                                             class="flex-1 border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                                             required
                                         />

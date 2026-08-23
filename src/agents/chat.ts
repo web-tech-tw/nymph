@@ -3,6 +3,7 @@ import type { ChatAgentParams, ChatAgent } from "../types/agent";
 import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
 import { applyPromptCaching } from "../utils/prompts";
+import { readReceivedImage } from "../utils/media";
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { buildAnthropicProviderOptions } from "../utils/prompts";
@@ -21,6 +22,9 @@ export class Chat implements ChatAgent {
     }
 
     private buildContext(ctx: ChatContext): string {
+        if (ctx.type === "image") {
+            return `[image:${ctx.content}]`;
+        }
         return ctx.content;
     }
 
@@ -28,12 +32,25 @@ export class Chat implements ChatAgent {
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;
         const historyMessages = await getHistoryMessages(sessionId);
 
+        let userContent: ModelMessage["content"] = ctx.content;
+        if (ctx.type === "image") {
+            const imageBytes = await readReceivedImage(ctx.content);
+            if (imageBytes) {
+                userContent = [
+                    {
+                        type: "image",
+                        image: imageBytes,
+                    },
+                ];
+            }
+        }
+
         return [
             ...applyPromptCaching(historyMessages),
             {
                 role: "user",
-                content: this.buildContext(ctx),
-            },
+                content: userContent,
+            } as ModelMessage,
         ];
     }
 

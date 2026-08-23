@@ -10,6 +10,7 @@ import type { LineProviderParams, WebhookResult } from "../types/line";
 import { server as defaultServer, type HttpServer } from "../routes";
 import { sliceContent } from "../utils/text";
 import { extractSourceId } from "../utils/line";
+import { saveReceivedImage } from "../utils/media";
 
 export class LineProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.LINE;
@@ -74,7 +75,8 @@ export class LineProvider implements BasePlatformProvider {
         let body: webhook.CallbackRequest;
         try {
             body = JSON.parse(rawBody);
-        } catch {
+        } catch (err) {
+            console.error("[LineProvider] Invalid JSON payload in webhook body:", err);
             return { success: false, statusCode: 400, error: "Invalid JSON payload" };
         }
 
@@ -85,56 +87,131 @@ export class LineProvider implements BasePlatformProvider {
     }
 
     async #handleEvent(event: webhook.Event): Promise<void> {
-        if (event.type !== "message" || event.message.type !== "text") {
+        if (event.type !== "message") {
             return;
         }
 
-        const messageEvent = event as webhook.MessageEvent;
-        const textMessage = messageEvent.message as webhook.TextMessageContent;
         const sourceId = extractSourceId(event);
         if (!sourceId) return;
 
-        const content = textMessage.text.trim();
-        if (!content) return;
+        switch (event.message.type) {
+        case "text": {
+            const messageEvent = event as webhook.MessageEvent;
+            const textMessage = messageEvent.message as webhook.TextMessageContent;
+            const content = textMessage.text.trim();
+            if (!content) return;
 
-        if (this.#client && event.source?.userId) {
-            this.#client.showLoadingAnimation({
-                chatId: sourceId,
-                loadingSeconds: 15,
-            }).catch(() => {});
+            if (this.#client && event.source?.userId) {
+                this.#client.showLoadingAnimation({
+                    chatId: sourceId,
+                    loadingSeconds: 15,
+                }).catch((err) => {
+                    console.warn("[LineProvider] Failed to show loading animation:", err);
+                });
+            }
+
+            const ctx: ChatContext = {
+                platformName: PlatformName.LINE,
+                roomId: sourceId,
+                sender: {
+                    id: event.source?.userId ?? sourceId,
+                    nickname: event.source?.userId ?? sourceId,
+                },
+                type: "text",
+                content,
+                reply: async (text: string) => {
+                    await this.sendText(sourceId, text);
+                },
+            };
+
+            for (const cb of this.#messageCallbacks) {
+                try {
+                    await cb(ctx);
+                } catch (error) {
+                    console.error("[LineProvider] Error executing message callback:", error);
+                }
+            }
+            break;
         }
 
-        const ctx: ChatContext = {
-            platformName: PlatformName.LINE,
-            roomId: sourceId,
-            sender: {
-                id: event.source?.userId ?? sourceId,
-                nickname: event.source?.userId ?? sourceId,
-            },
-            content,
-            reply: async (text: string) => {
-                await this.sendText(sourceId, text);
-            },
-        };
-
-        for (const cb of this.#messageCallbacks) {
+        case "image": {
+            const imageMessage = event.message as webhook.ImageMessageContent;
             try {
-                await cb(ctx);
+                const res = await fetch(`https://api-data.line.me/v2/bot/message/${imageMessage.id}/content`, {
+                    headers: {
+                        Authorization: `Bearer ${this.#token}`,
+                    },
+                });
+                if (!res.ok) {
+                    console.error(`[LineProvider] Failed to fetch image content for ${imageMessage.id}: ${res.statusText}`);
+                    return;
+                }
+
+                if (this.#client && event.source?.userId) {
+                    this.#client.showLoadingAnimation({
+                        chatId: sourceId,
+                        loadingSeconds: 15,
+                    }).catch((err) => {
+                        console.warn("[LineProvider] Failed to show loading animation:", err);
+                    });
+                }
+
+                const buffer = await res.arrayBuffer();
+                const id = await saveReceivedImage(buffer);
+
+                const ctx: ChatContext = {
+                    platformName: PlatformName.LINE,
+                    roomId: sourceId,
+                    sender: {
+                        id: event.source?.userId ?? sourceId,
+                        nickname: event.source?.userId ?? sourceId,
+                    },
+                    type: "image",
+                    content: id,
+                    reply: async (text: string) => {
+                        await this.sendText(sourceId, text);
+                    },
+                };
+
+                for (const cb of this.#messageCallbacks) {
+                    try {
+                        await cb(ctx);
+                    } catch (error) {
+                        console.error("[LineProvider] Error executing message callback:", error);
+                    }
+                }
             } catch (error) {
-                console.error("[LineProvider] Error executing message callback:", error);
+                console.error("[LineProvider] Error handling image message:", error);
             }
+            break;
+        }
+
+        default:
+            console.warn(`[LineProvider] Unsupported message type: ${event.message.type}`);
+            break;
         }
     }
 
     async sendText(roomId: string, content: string): Promise<void> {
-        if (!this.enabled || !this.#client) return;
+        if (!this.enabled) {
+            console.warn("[LineProvider] Cannot send text: Provider is disabled");
+            return;
+        }
+        if (!this.#client) {
+            console.warn("[LineProvider] Cannot send text: Client is not initialized");
+            return;
+        }
 
         const chunks = sliceContent(content, 5000);
         for (const chunk of chunks) {
-            await this.#client.pushMessage({
-                to: roomId,
-                messages: [{ type: "text", text: chunk }],
-            });
+            try {
+                await this.#client.pushMessage({
+                    to: roomId,
+                    messages: [{ type: "text", text: chunk }],
+                });
+            } catch (err) {
+                console.error(`[LineProvider] Failed to send message to room ${roomId}:`, err);
+            }
         }
     }
 }

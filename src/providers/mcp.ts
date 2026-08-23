@@ -152,6 +152,7 @@ export class McpProvider implements BasePlatformProvider {
                             id: userId,
                             nickname,
                         },
+                        type: "text",
                         content: prompt,
                         reply: async (text: string) => {
                             replyText = text;
