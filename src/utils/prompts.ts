@@ -96,3 +96,27 @@ export function applyPromptCaching(
     });
 }
 
+/**
+ * Formats a user profile XML tag from user profile metadata.
+ */
+export function formatUserProfileTag(
+    sender?: { id?: string; nickname?: string } | null,
+): string {
+    if (!sender || (!sender.id && !sender.nickname)) {
+        return "";
+    }
+    return `<user_profile id="${sender.id ?? ""}" nickname="${sender.nickname ?? ""}" />`;
+}
+
+/**
+ * Appends a user profile XML tag to the message content if sender metadata is available.
+ */
+export function formatUserProfileContext(
+    content: string,
+    sender?: { id?: string; nickname?: string } | null,
+): string {
+    const tag = formatUserProfileTag(sender);
+    return tag ? `${content}\n${tag}` : content;
+}
+
+
