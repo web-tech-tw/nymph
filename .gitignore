@@ -6,6 +6,7 @@
 coverage
 node_modules
 dist
+received
 
 # Log files
 npm-debug.log*

@@ -16,6 +16,7 @@ import type {
 import type { DiscordProviderParams } from "../types/discord";
 
 import { sliceContent } from "../utils/text";
+import { saveReceivedImage } from "../utils/media";
 
 export class DiscordProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.Discord;
@@ -69,32 +70,74 @@ export class DiscordProvider implements BasePlatformProvider {
                 cleanContent = cleanContent.replace(mentionRegex, "").trim();
             }
 
-            if (!cleanContent) return;
+            const imageAttachments = message.attachments.filter(
+                (att) => att.contentType?.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(att.name || ""),
+            );
+
+            if (!cleanContent && imageAttachments.size === 0) return;
 
             if (message.channel.isSendable()) {
-                await message.channel.sendTyping().catch(() => { });
+                await message.channel.sendTyping().catch((err) => {
+                    console.warn("[DiscordProvider] Failed to send typing indicator:", err);
+                });
             }
 
-            const ctx: ChatContext = {
-                platformName: PlatformName.Discord,
-                roomId: message.channel.id,
-                sender: {
-                    id: message.author.id,
-                    nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
-                    username: message.author.username,
-                },
-                type: "text",
-                content: cleanContent,
-                reply: async (text: string) => {
-                    await this.sendText(message.channel.id, text);
-                },
-            };
-
-            for (const cb of this.#messageCallbacks) {
+            for (const [, attachment] of imageAttachments) {
                 try {
-                    await cb(ctx);
+                    const res = await fetch(attachment.url);
+                    if (res.ok) {
+                        const buffer = await res.arrayBuffer();
+                        const id = await saveReceivedImage(buffer);
+                        const imageCtx: ChatContext = {
+                            platformName: PlatformName.Discord,
+                            roomId: message.channel.id,
+                            sender: {
+                                id: message.author.id,
+                                nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
+                                username: message.author.username,
+                            },
+                            type: "image",
+                            content: id,
+                            reply: async (text: string) => {
+                                await this.sendText(message.channel.id, text);
+                            },
+                        };
+
+                        for (const cb of this.#messageCallbacks) {
+                            try {
+                                await cb(imageCtx);
+                            } catch (error) {
+                                console.error("[DiscordProvider] Error executing image callback:", error);
+                            }
+                        }
+                    }
                 } catch (error) {
-                    console.error("[DiscordProvider] Error executing message callback:", error);
+                    console.error("[DiscordProvider] Error processing image attachment:", error);
+                }
+            }
+
+            if (cleanContent) {
+                const ctx: ChatContext = {
+                    platformName: PlatformName.Discord,
+                    roomId: message.channel.id,
+                    sender: {
+                        id: message.author.id,
+                        nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
+                        username: message.author.username,
+                    },
+                    type: "text",
+                    content: cleanContent,
+                    reply: async (text: string) => {
+                        await this.sendText(message.channel.id, text);
+                    },
+                };
+
+                for (const cb of this.#messageCallbacks) {
+                    try {
+                        await cb(ctx);
+                    } catch (error) {
+                        console.error("[DiscordProvider] Error executing message callback:", error);
+                    }
                 }
             }
         });
@@ -119,14 +162,35 @@ export class DiscordProvider implements BasePlatformProvider {
     }
 
     async sendText(roomId: string, content: string): Promise<void> {
-        if (!this.enabled || !this.#client) return;
+        if (!this.enabled) {
+            console.warn("[DiscordProvider] Cannot send text: Provider is disabled");
+            return;
+        }
+        if (!this.#client) {
+            console.warn("[DiscordProvider] Cannot send text: Discord client is not initialized");
+            return;
+        }
 
-        const channel = await this.#client.channels.fetch(roomId).catch(() => null);
-        if (!channel || !channel.isSendable()) return;
+        const channel = await this.#client.channels.fetch(roomId).catch((err) => {
+            console.error(`[DiscordProvider] Failed to fetch channel ${roomId}:`, err);
+            return null;
+        });
+        if (!channel) {
+            console.error(`[DiscordProvider] Channel ${roomId} not found`);
+            return;
+        }
+        if (!channel.isSendable()) {
+            console.error(`[DiscordProvider] Channel ${roomId} is not sendable`);
+            return;
+        }
 
         const chunks = sliceContent(content, 2000);
         for (const chunk of chunks) {
-            await channel.send(chunk);
+            try {
+                await channel.send(chunk);
+            } catch (err) {
+                console.error(`[DiscordProvider] Failed to send message to channel ${roomId}:`, err);
+            }
         }
     }
 }
