@@ -401,7 +401,7 @@ export function TokensPage({
                                 <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                                     <div>
                                         <h2 class="font-bold text-gray-900">MCP 連線權杖管理</h2>
-                                        <p class="text-xs text-gray-500 mt-0.5">簽發並管理用於 Claude、Cursor 等工具的專屬連線權杖</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">簽發並管理用於 Antigravity、Claude Code/Desktop、Codex、Cursor 等工具的專屬連線權杖</p>
                                     </div>
                                 </div>
 
@@ -411,7 +411,7 @@ export function TokensPage({
                                         <input
                                             type="text"
                                             x-model="newTokenLabel"
-                                            placeholder="請輸入權杖名稱（例如：Cursor IDE、Claude Desktop）"
+                                            placeholder="請輸入權杖名稱（例如：Antigravity、Claude Code/Desktop、Codex、Cursor）"
                                             class="flex-1 border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                                             required
                                         />
