@@ -52,7 +52,7 @@ Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣�
   "mcpServers": {
     "nymph": {
       "type": "http",
-      "url": "https://nymph.web-tech.tw/mcp",
+      "url": "https://web-tech.tw/nymph/mcp",
       "headers": {
         "Authorization": "Bearer <你的_MCP_TOKEN>"
       }
