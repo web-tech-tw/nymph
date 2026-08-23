@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import type { ModelMessage } from "ai";
-import type { UserProfile } from "../../types/provider";
+import type { UserProfile, MessageContentType } from "../../types/provider";
 import { isDatabaseConnected } from "../connection";
 
 export interface IToolCallRecord {
@@ -10,7 +10,8 @@ export interface IToolCallRecord {
 
 export interface IChatMessage {
     sessionId: string;
-    role: "user" | "assistant" | "system";
+    role: ModelMessage["role"];
+    type: MessageContentType;
     content: string;
     toolCalls?: IToolCallRecord[];
     sender?: {
@@ -23,7 +24,8 @@ export interface IChatMessage {
 const ChatMessageSchema = new Schema<IChatMessage>(
     {
         sessionId: { type: String, required: true, index: true },
-        role: { type: String, required: true, enum: ["user", "assistant", "system"] },
+        role: { type: String, required: true, enum: ["user", "assistant", "system", "tool"] },
+        type: { type: String, required: true, enum: ["text", "image"] },
         content: { type: String, required: true },
         toolCalls: {
             type: [
@@ -63,9 +65,9 @@ export async function getHistoryMessages(sessionId: string, limit = 20): Promise
 
         const reversed = docs.reverse();
         return reversed.map((doc) => ({
-            role: doc.role as "user" | "assistant",
+            role: doc.role,
             content: doc.content,
-        }));
+        } as ModelMessage));
     } catch (error) {
         console.error("[Database] Failed to get chat history:", error);
         return [];
@@ -74,7 +76,8 @@ export async function getHistoryMessages(sessionId: string, limit = 20): Promise
 
 export async function saveChatMessage(params: {
     sessionId: string;
-    role: "user" | "assistant";
+    role: ModelMessage["role"];
+    type: MessageContentType;
     content: string;
     toolCalls?: IToolCallRecord[];
     sender?: UserProfile;
@@ -87,6 +90,7 @@ export async function saveChatMessage(params: {
         await ChatMessageModel.create({
             sessionId: params.sessionId,
             role: params.role,
+            type: params.type,
             content: params.content,
             toolCalls: params.toolCalls?.length ? params.toolCalls : undefined,
             sender: params.sender
