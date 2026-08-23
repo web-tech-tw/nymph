@@ -41,6 +41,7 @@
     "etl": "bun src/pipeline/index.ts",
     "etl:dry-run": "bun src/pipeline/index.ts --dry-run",
     "migrate:history": "bun scripts/migrate-chat-history.ts",
+    "migrate:msg-type": "bun scripts/migrate-message-type.ts",
     "prepare": "husky install"
   },
   "type": "module",
