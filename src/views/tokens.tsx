@@ -441,12 +441,12 @@ export function TokensPage({
                                                 <div class="flex items-center space-x-2">
                                                     <template x-if="editingTokenId !== t.id">
                                                         <div class="flex items-center space-x-2">
-                                                            <span class="font-bold text-gray-900 text-sm" x-text="t.label"></span>
+                                                            <span class="font-bold text-gray-900 text-sm md:text-base" x-text="t.label"></span>
                                                             <button
                                                                 type="button"
                                                                 x-on:click="startEditing(t)"
                                                                 title="重新命名"
-                                                                class="text-xs text-sky-600 hover:text-sky-800 font-medium"
+                                                                class="text-xs text-sky-600 hover:text-sky-800 font-medium hover:underline"
                                                             >
                                                                 重新命名
                                                             </button>
@@ -457,20 +457,20 @@ export function TokensPage({
                                                             <input
                                                                 type="text"
                                                                 x-model="editingTokenLabel"
-                                                                class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-sky-500"
+                                                                class="border border-gray-300 rounded px-2.5 py-1 text-sm focus:ring-1 focus:ring-sky-500"
                                                                 x-on:keydown="if ($event.key === 'Enter') { saveTokenLabel(t); $event.preventDefault(); } if ($event.key === 'Escape') cancelEditing();"
                                                             />
                                                             <button
                                                                 type="button"
                                                                 x-on:click="saveTokenLabel(t)"
-                                                                class="bg-sky-500 text-white text-xs px-2 py-1 rounded hover:bg-sky-600"
+                                                                class="bg-sky-500 hover:bg-sky-600 text-white text-xs md:text-sm px-3.5 py-1.5 rounded font-medium shadow-sm transition"
                                                             >
                                                                 儲存
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 x-on:click="cancelEditing"
-                                                                class="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded hover:bg-gray-300"
+                                                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs md:text-sm px-3.5 py-1.5 rounded font-medium shadow-sm transition"
                                                             >
                                                                 取消
                                                             </button>
@@ -496,7 +496,7 @@ export function TokensPage({
                                                 <button
                                                     type="button"
                                                     x-on:click="copyToClipboard(t.token, t.id)"
-                                                    class="bg-white border border-gray-300 hover:bg-gray-50 px-2 py-0.5 rounded text-xs font-sans text-gray-700 shadow-sm"
+                                                    class="bg-white border border-gray-300 hover:bg-gray-50 px-2.5 py-1 rounded text-xs font-sans text-gray-700 shadow-sm"
                                                     x-text="copiedTokenId === t.id ? '已複製！' : '複製'"
                                                 ></button>
                                             </div>
@@ -508,18 +508,18 @@ export function TokensPage({
                                                         <span>建立於 <span x-text="new Date(t.createdAt).toLocaleDateString()"></span></span>
                                                     </template>
                                                 </div>
-                                                <div class="space-x-3">
+                                                <div class="flex items-center space-x-2">
                                                     <button
                                                         type="button"
                                                         x-on:click="rotateToken(t)"
-                                                        class="text-amber-600 hover:text-amber-800 font-medium"
+                                                        class="inline-flex items-center bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 text-xs md:text-sm font-medium px-3.5 py-1.5 rounded shadow-sm transition"
                                                     >
                                                         輪替金鑰
                                                     </button>
                                                     <button
                                                         type="button"
                                                         x-on:click="deleteToken(t)"
-                                                        class="text-red-600 hover:text-red-800 font-medium"
+                                                        class="inline-flex items-center bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 text-xs md:text-sm font-medium px-3.5 py-1.5 rounded shadow-sm transition"
                                                     >
                                                         刪除
                                                     </button>

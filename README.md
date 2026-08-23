@@ -1,5 +1,9 @@
 # Nymph (寧芙)
 
+> **您的專屬 AI 技術顧問**  
+> 來自 Web-Tech-TW  
+> 匠心打造 以開源 AI 技術驅動的多平台智慧技術顧問服務
+
 Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣網際網路技術推廣組織（Web Tech TW）營運與維護，專為開發者提供專業、深入且具脈絡的系統架構諮詢、除錯指引與工程經驗檢索。
 
 ![Nymph Avatar](avatar.png)
@@ -48,7 +52,7 @@ Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣�
   "mcpServers": {
     "nymph": {
       "type": "http",
-      "url": "https://nymph.web-tech.tw/mcp",
+      "url": "https://web-tech.tw/nymph/mcp",
       "headers": {
         "Authorization": "Bearer <你的_MCP_TOKEN>"
       }
