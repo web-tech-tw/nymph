@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { parseMessageContent, migrateMessageTypes } from "./migrate-message-type";
 
 interface LegacySessionDoc {
     _id: mongoose.Types.ObjectId;
@@ -14,6 +15,7 @@ interface LegacySessionDoc {
 interface NewMessageDoc {
     sessionId: string;
     role: "user" | "assistant" | "system";
+    type: "text" | "image";
     content: string;
     createdAt: Date;
 }
@@ -79,16 +81,27 @@ async function migrate() {
         const flatDocs = await db.collection("chat_messages").find({ role: { $exists: true } }).toArray();
         if (flatDocs.length > 0) {
             console.info(`[Migration] Copying ${flatDocs.length} flat documents from 'chat_messages' to 'chatmessages'...`);
+            const normalizedDocs = flatDocs.map((doc) => {
+                const rawContent = typeof doc.content === "string" ? doc.content : extractContent(doc.content);
+                const parsed = parseMessageContent(rawContent);
+                return {
+                    ...doc,
+                    type: doc.type || parsed.type,
+                    content: parsed.content,
+                };
+            });
             const targetCollection = db.collection("chatmessages");
             await targetCollection.deleteMany({});
-            await targetCollection.insertMany(flatDocs);
+            await targetCollection.insertMany(normalizedDocs);
             await db.collection("chat_messages").drop();
             console.info("[Migration] Dropped old 'chat_messages' collection.");
-            console.info("\n[Migration] Migration completed successfully!");
-            await mongoose.disconnect();
-            return;
         }
-        console.info("[Migration] No legacy documents found to migrate.");
+
+        // Migrate message types for existing documents in chatmessages
+        console.info("[Migration] Checking message types in 'chatmessages' collection...");
+        const result = await migrateMessageTypes(db);
+        console.info(`[Migration] Updated ${result.imageMessagesUpdated} image message(s), backfilled ${result.textMessagesUpdated} text message(s).`);
+        console.info("\n[Migration] Migration completed successfully!");
         await mongoose.disconnect();
         return;
     }
@@ -113,10 +126,12 @@ async function migrate() {
                 const content = extractContent(msg.data?.content);
 
                 if (content) {
+                    const parsed = parseMessageContent(content);
                     newDocs.push({
                         sessionId: targetSessionId,
                         role,
-                        content,
+                        type: parsed.type,
+                        content: parsed.content,
                         createdAt: new Date(now - (session.messages.length - i) * 1000),
                     });
                 }
@@ -129,6 +144,10 @@ async function migrate() {
         await targetCollection.insertMany(newDocs);
         console.info(`[Migration] Inserted ${newDocs.length} migrated message documents into 'chatmessages'.`);
     }
+
+    // 4. Run message type migration pass
+    const typeResult = await migrateMessageTypes(db);
+    console.info(`[Migration] Type verification: ${typeResult.imageMessagesUpdated} image message(s), ${typeResult.textMessagesUpdated} text message(s) updated.`);
 
     console.info(`\n[Migration] Migration completed successfully! Total messages migrated: ${newDocs.length}`);
     await mongoose.disconnect();
