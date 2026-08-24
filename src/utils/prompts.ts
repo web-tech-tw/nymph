@@ -118,5 +118,3 @@ export function formatUserProfileContext(
     const tag = formatUserProfileTag(sender);
     return tag ? `${content}\n${tag}` : content;
 }
-
-
