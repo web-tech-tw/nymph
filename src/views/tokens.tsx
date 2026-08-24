@@ -90,10 +90,15 @@ export function TokensPage({
                                             'Authorization': ['SARA', saraToken].join(' '),
                                         },
                                     });
-                                    if (res.ok) {
-                                        const data = await res.json();
-                                        this.tokens = data.tokens || [];
+                                    if (!res.ok) {
+                                        if (res.status === 401) {
+                                            localStorage.removeItem('unified_token');
+                                        }
+                                        return;
                                     }
+
+                                    const data = await res.json();
+                                    this.tokens = data.tokens || [];
                                 } catch (e) {
                                     console.warn('Failed to fetch MCP tokens:', e);
                                 } finally {
@@ -272,18 +277,23 @@ export function TokensPage({
                                             'Authorization': ['SARA', saraToken].join(' '),
                                         },
                                     });
-                                    if (res.ok) {
-                                        const data = await res.json();
-                                        const user = data.profile;
-                                        this.userId = data.id;
-                                        this.nickname = user.nickname;
-                                        this.email = user.email;
-                                        this.avatarUrl = 'https://api.gravatar.com/avatar/' + user.avatar_hash + '?d=identicon&s=200';
-                                        this.isLoggedIn = true;
-
-                                        // Load user's MCP tokens
-                                        await this.fetchTokens();
+                                    if (!res.ok) {
+                                        if (res.status === 401) {
+                                            localStorage.removeItem('unified_token');
+                                        }
+                                        return;
                                     }
+
+                                    const data = await res.json();
+                                    const user = data.profile;
+                                    this.userId = data.id;
+                                    this.nickname = user.nickname;
+                                    this.email = user.email;
+                                    this.avatarUrl = 'https://api.gravatar.com/avatar/' + user.avatar_hash + '?d=identicon&s=200';
+                                    this.isLoggedIn = true;
+
+                                    // Load user's MCP tokens
+                                    await this.fetchTokens();
                                 } catch (e) {
                                     console.warn('Sara token verification failed:', e);
                                 } finally {
