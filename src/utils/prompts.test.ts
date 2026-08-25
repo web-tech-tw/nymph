@@ -3,6 +3,8 @@ import {
     parseAnthropicThinking,
     buildAnthropicProviderOptions,
     applyPromptCaching,
+    formatUserProfileTag,
+    formatUserProfileContext,
     ANTHROPIC_CACHE_CONTROL,
 } from "./prompts";
 import type { ModelMessage } from "ai";
@@ -102,4 +104,31 @@ describe("Anthropic Thinking & Provider Options Utilities", () => {
             expect(result[2]?.providerOptions).toEqual(ANTHROPIC_CACHE_CONTROL);
         });
     });
+
+    describe("formatUserProfileTag & formatUserProfileContext", () => {
+        it("should return empty tag when sender is missing or empty", () => {
+            expect(formatUserProfileTag()).toBe("");
+            expect(formatUserProfileTag(null)).toBe("");
+            expect(formatUserProfileTag({})).toBe("");
+            expect(formatUserProfileContext("Hello")).toBe("Hello");
+            expect(formatUserProfileContext("Hello", null)).toBe("Hello");
+        });
+
+        it("should format user profile tag with id and nickname", () => {
+            const tag = formatUserProfileTag({ id: "user_123", nickname: "Alice" });
+            expect(tag).toBe("<user_profile id=\"user_123\" nickname=\"Alice\" />");
+        });
+
+        it("should append user profile tag to message content", () => {
+            const context = formatUserProfileContext("Hello world", { id: "user_123", nickname: "Alice" });
+            expect(context).toBe("Hello world\n<user_profile id=\"user_123\" nickname=\"Alice\" />");
+        });
+
+        it("should handle partial profile with id only or nickname only", () => {
+            expect(formatUserProfileTag({ id: "user_123" })).toBe("<user_profile id=\"user_123\" nickname=\"\" />");
+            expect(formatUserProfileTag({ nickname: "Bob" })).toBe("<user_profile id=\"\" nickname=\"Bob\" />");
+        });
+    });
 });
+
+

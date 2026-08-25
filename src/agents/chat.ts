@@ -2,11 +2,10 @@ import { ToolLoopAgent, type ModelMessage } from "ai";
 import type { ChatAgentParams, ChatAgent } from "../types/agent";
 import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
-import { applyPromptCaching } from "../utils/prompts";
+import { applyPromptCaching, buildAnthropicProviderOptions, formatUserProfileContext } from "../utils/prompts";
 import { readReceivedImage } from "../utils/media";
 
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { buildAnthropicProviderOptions } from "../utils/prompts";
 import { getActiveToolRegistry } from "./tools";
 
 export class Chat implements ChatAgent {
@@ -22,14 +21,14 @@ export class Chat implements ChatAgent {
     }
 
     private buildContext(ctx: ChatContext): string {
-        return ctx.content;
+        return formatUserProfileContext(ctx.content, ctx.sender);
     }
 
     private async buildMessages(ctx: ChatContext): Promise<ModelMessage[]> {
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;
         const historyMessages = await getHistoryMessages(sessionId);
 
-        let userContent: ModelMessage["content"] = ctx.content;
+        let userContent: ModelMessage["content"] = this.buildContext(ctx);
         if (ctx.type === "image") {
             const imageBytes = await readReceivedImage(ctx.content);
             if (imageBytes) {
@@ -80,18 +79,19 @@ export class Chat implements ChatAgent {
             return acc;
         }, "");
 
+        // 3. Session identifier scoped by platform and room for conversation persistence
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;
 
-        // 3. Save incoming user message
+        // 4. Save incoming user message (raw content)
         await saveChatMessage({
             sessionId,
             role: "user",
             type: ctx.type,
-            content: this.buildContext(ctx),
+            content: ctx.content,
             sender: ctx.sender,
         });
 
-        // 4. Save assistant reply along with dispatched toolCalls
+        // 5. Save assistant reply along with dispatched toolCalls
         if (reply) {
             await saveChatMessage({
                 sessionId,

@@ -2,6 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import type { ModelMessage } from "ai";
 import type { UserProfile, MessageContentType } from "../../types/provider";
 import { isDatabaseConnected } from "../connection";
+import { formatUserProfileContext } from "../../utils/prompts";
 
 export interface IToolCallRecord {
     toolName: string;
@@ -64,10 +65,16 @@ export async function getHistoryMessages(sessionId: string, limit = 20): Promise
             .lean();
 
         const reversed = docs.reverse();
-        return reversed.map((doc) => ({
-            role: doc.role,
-            content: doc.content,
-        } as ModelMessage));
+        return reversed.map((doc) => {
+            let content = doc.content;
+            if (doc.role === "user") {
+                content = formatUserProfileContext(doc.content, doc.sender);
+            }
+            return {
+                role: doc.role,
+                content,
+            } as ModelMessage;
+        });
     } catch (error) {
         console.error("[Database] Failed to get chat history:", error);
         return [];
