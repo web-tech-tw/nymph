@@ -226,6 +226,7 @@ describe("Tool Perception Meta-Tools", () => {
             expect(allTools.currentDateTime).toBeDefined();
             expect(allTools.knowledgeDocs).toBeDefined();
             expect(allTools.searchChatHistory).toBeDefined();
+            expect(allTools.readReceivedImage).toBeDefined();
             expect(allTools.discoverTools).toBeDefined();
             expect(allTools.getToolInfo).toBeDefined();
             expect(allTools.inspectMcpServers).toBeDefined();
