@@ -109,6 +109,13 @@ export function formatUserProfileTag(
 }
 
 /**
+ * Formats an image XML tag for image-type messages.
+ */
+export function formatImageMessageTag(id: string): string {
+    return `<image id="${id}">User sent an image.</image>`;
+}
+
+/**
  * Appends a user profile XML tag to the message content if sender metadata is available.
  */
 export function formatUserProfileContext(

@@ -5,6 +5,7 @@ import {
     applyPromptCaching,
     formatUserProfileTag,
     formatUserProfileContext,
+    formatImageMessageTag,
     ANTHROPIC_CACHE_CONTROL,
 } from "./prompts";
 import type { ModelMessage } from "ai";
@@ -127,6 +128,13 @@ describe("Anthropic Thinking & Provider Options Utilities", () => {
         it("should handle partial profile with id only or nickname only", () => {
             expect(formatUserProfileTag({ id: "user_123" })).toBe("<user_profile id=\"user_123\" nickname=\"\" />");
             expect(formatUserProfileTag({ nickname: "Bob" })).toBe("<user_profile id=\"\" nickname=\"Bob\" />");
+        });
+    });
+
+    describe("formatImageMessageTag", () => {
+        it("should format image message XML tag with id", () => {
+            const tag = formatImageMessageTag("6OXbPlS60-Zpo1eZdwPAW");
+            expect(tag).toBe("<image id=\"6OXbPlS60-Zpo1eZdwPAW\">User sent an image.</image>");
         });
     });
 });
