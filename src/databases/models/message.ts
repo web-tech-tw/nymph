@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import type { ModelMessage } from "ai";
 import type { UserProfile, MessageContentType } from "../../types/provider";
 import { isDatabaseConnected } from "../connection";
-import { formatUserProfileContext } from "../../utils/prompts";
+import { formatUserProfileContext, formatImageMessageTag } from "../../utils/prompts";
 
 export interface IToolCallRecord {
     toolName: string;
@@ -66,9 +66,9 @@ export async function getHistoryMessages(sessionId: string, limit = 20): Promise
 
         const reversed = docs.reverse();
         return reversed.map((doc) => {
-            let content = doc.content;
+            let content = doc.type === "image" ? formatImageMessageTag(doc.content) : doc.content;
             if (doc.role === "user") {
-                content = formatUserProfileContext(doc.content, doc.sender);
+                content = formatUserProfileContext(content, doc.sender);
             }
             return {
                 role: doc.role,
@@ -194,7 +194,7 @@ export async function searchChatHistoryMessages(
         const matches = reversed.map((doc, idx) => ({
             turn: idx + 1,
             role: doc.role,
-            content: doc.content,
+            content: doc.type === "image" ? formatImageMessageTag(doc.content) : doc.content,
             sessionId: doc.sessionId,
             createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
             sender: doc.sender?.nickname || doc.sender?.id ? doc.sender : undefined,
