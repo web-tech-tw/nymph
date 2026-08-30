@@ -2,6 +2,7 @@ import type { ToolSet } from "ai";
 import { toolCurrentDateTime } from "./current-datetime";
 import { toolKnowledgeDocs } from "./knowledge-docs";
 import { toolSearchChatHistory } from "./search-chat-history";
+import { toolReadReceivedImage } from "./read-received-image";
 import { loadMcpTools, closeMcpClients, getMcpServerStatuses, getMcpServerStatus, type McpServerStatus } from "./mcp";
 import {
     toolDiscoverTools,
@@ -14,6 +15,7 @@ export {
     toolCurrentDateTime,
     toolKnowledgeDocs,
     toolSearchChatHistory,
+    toolReadReceivedImage,
     toolDiscoverTools,
     toolGetToolInfo,
     toolInspectMcpServers,
@@ -38,6 +40,7 @@ export const defaultTools: ToolSet = {
     currentDateTime: toolCurrentDateTime(),
     knowledgeDocs: toolKnowledgeDocs(),
     searchChatHistory: toolSearchChatHistory(),
+    readReceivedImage: toolReadReceivedImage(),
     discoverTools: toolDiscoverTools(() => activeToolRegistry),
     getToolInfo: toolGetToolInfo(() => activeToolRegistry),
     inspectMcpServers: toolInspectMcpServers(),
@@ -56,6 +59,7 @@ export async function getAllTools(
         currentDateTime: toolCurrentDateTime(),
         knowledgeDocs: toolKnowledgeDocs(),
         searchChatHistory: toolSearchChatHistory(),
+        readReceivedImage: toolReadReceivedImage(),
         discoverTools: toolDiscoverTools(() => activeToolRegistry),
         getToolInfo: toolGetToolInfo(() => activeToolRegistry),
         inspectMcpServers: toolInspectMcpServers(),

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "bun:test";
-import { saveReceivedImage, readReceivedImage, RECEIVED_DIR } from "./media";
+import { saveReceivedImage, readReceivedImage, detectImageMediaType, RECEIVED_DIR } from "./media";
 import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
@@ -54,5 +54,23 @@ describe("Media storage utilities", () => {
     it("should return null when reading non-existent image id", async () => {
         const nonExistent = await readReceivedImage("non-existent-id-12345");
         expect(nonExistent).toBeNull();
+    });
+
+    it("should detect various image media types from byte signatures", () => {
+        // JPEG
+        expect(detectImageMediaType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe("image/jpeg");
+        // PNG
+        expect(detectImageMediaType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]))).toBe("image/png");
+        // GIF
+        expect(detectImageMediaType(new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]))).toBe("image/gif");
+        // WEBP
+        const webpBytes = new Uint8Array([
+            0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+        ]);
+        expect(detectImageMediaType(webpBytes)).toBe("image/webp");
+        // BMP
+        expect(detectImageMediaType(new Uint8Array([0x42, 0x4d, 0x00, 0x00]))).toBe("image/bmp");
+        // Unknown / fallback
+        expect(detectImageMediaType(new Uint8Array([0x00, 0x01, 0x02]))).toBe("image/jpeg");
     });
 });
