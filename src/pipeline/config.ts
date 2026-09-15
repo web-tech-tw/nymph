@@ -9,10 +9,9 @@ export const PIPELINE_CONFIG = {
         collectionName: "knowledge",
     },
     llm: {
-        model: Bun.env.ETL_ANTHROPIC_MODEL || "claude-haiku-4-5",
-        apiKey: Bun.env.ETL_ANTHROPIC_API_KEY || "",
-        baseURL: Bun.env.ETL_ANTHROPIC_BASE_URL,
-        thinking: Bun.env.ETL_ANTHROPIC_THINKING,
+        model: Bun.env.ETL_NIM_MODEL || "openai/gpt-oss-120b",
+        apiKey: Bun.env.ETL_NIM_API_KEY || "",
+        baseURL: Bun.env.ETL_NIM_BASE_URL || "https://integrate.api.nvidia.com/v1",
         concurrency: 10,
     },
     thresholds: {

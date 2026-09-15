@@ -2,10 +2,10 @@ import { ToolLoopAgent, type ModelMessage } from "ai";
 import type { ChatAgentParams, ChatAgent } from "../types/agent";
 import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
-import { applyPromptCaching, buildAnthropicProviderOptions, formatUserProfileContext } from "../utils/prompts";
+import { formatUserProfileContext } from "../utils/prompts";
 import { readReceivedImage } from "../utils/media";
 
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getActiveToolRegistry } from "./tools";
 
 export class Chat implements ChatAgent {
@@ -42,7 +42,7 @@ export class Chat implements ChatAgent {
         }
 
         return [
-            ...applyPromptCaching(historyMessages),
+            ...historyMessages,
             {
                 role: "user",
                 content: userContent,
@@ -107,28 +107,31 @@ export class Chat implements ChatAgent {
 }
 
 /**
+ * Creates an OpenAI-compatible NVIDIA NIM provider instance.
+ */
+export function createNimProvider(options?: { apiKey?: string; baseURL?: string }) {
+    return createOpenAICompatible({
+        name: "nim",
+        baseURL: options?.baseURL || Bun.env.NIM_BASE_URL || "https://integrate.api.nvidia.com/v1",
+        apiKey: options?.apiKey || Bun.env.NIM_API_KEY,
+    });
+}
+
+/**
  * Creates a new Chat instance initialized with system settings and active tools.
  */
 export async function createChatAgent(): Promise<Chat> {
-    const anthropic = createAnthropic({
-        apiKey: Bun.env.ANTHROPIC_API_KEY,
-        baseURL: Bun.env.ANTHROPIC_BASE_URL,
-    });
+    const nim = createNimProvider();
 
     const settingsFile = Bun.file("./settings.xml");
     const instructions = await settingsFile.text();
 
-    const providerOptions = buildAnthropicProviderOptions({
-        thinking: Bun.env.ANTHROPIC_THINKING,
-    });
-
     const tools = getActiveToolRegistry();
 
     return new Chat({
-        model: anthropic(Bun.env.ANTHROPIC_MODEL || "claude-sonnet-5"),
+        model: nim(Bun.env.NIM_MODEL || "openai/gpt-oss-120b"),
         instructions,
         toolSet: tools,
-        providerOptions,
     });
 }
 

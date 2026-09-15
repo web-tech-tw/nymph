@@ -54,7 +54,7 @@ export function toolReadReceivedImage(customFetcher?: ReadReceivedImageFetcher) 
                 message: `Successfully loaded image '${trimmedId}' (${mediaType}, ${bytes.byteLength} bytes).`,
             };
         },
-        toModelOutput: ({ output }: { output: ReadReceivedImageResult }) => {
+        toModelOutput: ({ output }) => {
             if (!output.success || !output.imageBytes) {
                 return {
                     type: "text" as const,

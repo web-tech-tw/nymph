@@ -1,13 +1,13 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { PIPELINE_CONFIG } from "../config";
 import type { DiscussionThread, ExtractedKnowledge } from "../types";
-import { buildAnthropicProviderOptions } from "../../utils/prompts";
 
-const anthropic = createAnthropic({
-    apiKey: PIPELINE_CONFIG.llm.apiKey,
+const nim = createOpenAICompatible({
+    name: "nim",
     baseURL: PIPELINE_CONFIG.llm.baseURL,
+    apiKey: PIPELINE_CONFIG.llm.apiKey,
 });
 
 export const TechnicalSummarySchema = z.object({
@@ -76,16 +76,10 @@ export async function summarizeThread(
     );
 
     try {
-        const providerOptions = buildAnthropicProviderOptions({
-            thinking: PIPELINE_CONFIG.llm.thinking,
-            cacheControl: true,
-        });
-
         const { object } = await generateObject({
-            model: anthropic(modelName),
+            model: nim.chatModel(modelName),
             schema: TechnicalSummarySchema,
             system: EXTRACTION_SYSTEM_PROMPT,
-            providerOptions,
             prompt: `Analyze the following chat transcript and perform structured technical extraction:\n\nDate: ${thread.date}\nParticipants: ${thread.participants.join(", ")}\n\n[Chat Transcript]\n${chatTranscript}`,
         });
 
