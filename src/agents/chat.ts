@@ -71,13 +71,8 @@ export class Chat implements ChatAgent {
             }
         }
 
-        // 2. Extract final assistant text reply
-        const reply = result.content.reduce((acc: string, c) => {
-            if ("text" in c) {
-                return acc + c.text;
-            }
-            return acc;
-        }, "");
+        // 2. Extract final assistant text reply (using result.text to exclude reasoning parts)
+        const reply = result.text;
 
         // 3. Session identifier scoped by platform and room for conversation persistence
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;
