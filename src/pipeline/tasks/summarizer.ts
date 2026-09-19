@@ -4,8 +4,8 @@ import { z } from "zod";
 import { PIPELINE_CONFIG } from "../config";
 import type { DiscussionThread, ExtractedKnowledge } from "../types";
 
-const nim = createOpenAICompatible({
-    name: "nim",
+const openai = createOpenAICompatible({
+    name: "openai-compatible",
     baseURL: PIPELINE_CONFIG.llm.baseURL,
     apiKey: PIPELINE_CONFIG.llm.apiKey,
 });
@@ -60,7 +60,7 @@ Your task is to extract structured, high-value technical knowledge, troubleshoot
 4. Clean Classification: Categorize accurately into the most appropriate technical category and provide 2-5 lowercase technical tags.`;
 
 /**
- * Summarize a single technical discussion thread using Claude Haiku 4.5
+ * Summarize a single technical discussion thread using LLM
  */
 export async function summarizeThread(
     thread: DiscussionThread,
@@ -77,7 +77,7 @@ export async function summarizeThread(
 
     try {
         const { object } = await generateObject({
-            model: nim.chatModel(modelName),
+            model: openai.chatModel(modelName),
             schema: TechnicalSummarySchema,
             system: EXTRACTION_SYSTEM_PROMPT,
             prompt: `Analyze the following chat transcript and perform structured technical extraction:\n\nDate: ${thread.date}\nParticipants: ${thread.participants.join(", ")}\n\n[Chat Transcript]\n${chatTranscript}`,
