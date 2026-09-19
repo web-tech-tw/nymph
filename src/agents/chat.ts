@@ -102,21 +102,23 @@ export class Chat implements ChatAgent {
 }
 
 /**
- * Creates an OpenAI-compatible NVIDIA NIM provider instance.
+ * Creates an OpenAI-compatible provider instance.
  */
-export function createNimProvider(options?: { apiKey?: string; baseURL?: string }) {
+export function createOpenAICompatibleProvider(options?: { apiKey?: string; baseURL?: string }) {
     return createOpenAICompatible({
-        name: "nim",
-        baseURL: options?.baseURL || Bun.env.NIM_BASE_URL || "https://integrate.api.nvidia.com/v1",
-        apiKey: options?.apiKey || Bun.env.NIM_API_KEY,
+        name: "openai-compatible",
+        baseURL: options?.baseURL || Bun.env.OPENAI_BASE_URL || Bun.env.NIM_BASE_URL || "https://integrate.api.nvidia.com/v1",
+        apiKey: options?.apiKey || Bun.env.OPENAI_API_KEY || Bun.env.NIM_API_KEY,
     });
 }
+
+export const createNimProvider = createOpenAICompatibleProvider;
 
 /**
  * Creates a new Chat instance initialized with system settings and active tools.
  */
 export async function createChatAgent(): Promise<Chat> {
-    const nim = createNimProvider();
+    const provider = createOpenAICompatibleProvider();
 
     const settingsFile = Bun.file("./settings.xml");
     const instructions = await settingsFile.text();
@@ -124,7 +126,7 @@ export async function createChatAgent(): Promise<Chat> {
     const tools = getActiveToolRegistry();
 
     return new Chat({
-        model: nim(Bun.env.NIM_MODEL || "openai/gpt-oss-120b"),
+        model: provider(Bun.env.OPENAI_MODEL || Bun.env.NIM_MODEL || "openai/gpt-oss-120b"),
         instructions,
         toolSet: tools,
     });
