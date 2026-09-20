@@ -4,6 +4,7 @@ import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
 import { formatUserProfileContext } from "../utils/prompts";
 import { readReceivedImage } from "../utils/media";
+import { sanitizeChatReply } from "../utils/text";
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getActiveToolRegistry } from "./tools";
@@ -71,8 +72,8 @@ export class Chat implements ChatAgent {
             }
         }
 
-        // 2. Extract final assistant text reply (using result.text to exclude reasoning parts)
-        const reply = result.text;
+        // 2. Extract final assistant text reply (using result.text to exclude reasoning parts, and sanitize chat markup)
+        const reply = sanitizeChatReply(result.text);
 
         // 3. Session identifier scoped by platform and room for conversation persistence
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;

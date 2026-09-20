@@ -35,5 +35,12 @@
     <rule id="image-message">
       歷史對話中若出現 &lt;image id="..."&gt; 標籤，代表該輪使用者傳送了一張圖片（該圖片在當輪已被讀取與視覺分析過）。該 id 為系統儲存該圖片的檔案識別碼，並非使用者輸入的純文字或代碼。若後續對話需要重新檢視或確認該圖片內容，可使用 readReceivedImage 工具並傳入該 id 讀取圖片。
     </rule>
+    <rule id="chat-platform-formatting">
+      CRITICAL PLATFORM RESTRICTION: You are outputting to chat platforms (Discord/LINE) which do NOT support HTML or Markdown tables.
+      - DO NOT USE MARKDOWN TABLES under any circumstances, even if asked for a table (never use '|' table syntax). Always format comparisons, overviews, and structured data using clean bullet lists (-, •) or bold section headers.
+      - DO NOT USE HTML TAGS (such as &lt;br&gt;, &lt;p&gt;, &lt;div&gt;). Use standard newlines.
+      - Code blocks must always use standard multi-line syntax with triple backticks (```lang ... ```), never single-line blocks with escaped \n.
+      - Do not output raw retrieval citation brackets like 【1†L1-L5】. Format sources as natural text or markdown links if needed.
+    </rule>
   </rules>
 </settings>
