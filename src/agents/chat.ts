@@ -101,14 +101,53 @@ export class Chat implements ChatAgent {
     }
 }
 
+export interface OpenAICompatibleProviderOptions {
+    apiKey?: string;
+    baseURL?: string;
+    stripReasoningContent?: boolean;
+}
+
+/**
+ * Strips reasoning_content and reasoning fields from assistant messages in the request body.
+ * Prevents 400 Bad Request on strict OpenAI-compatible APIs (like Cerebras).
+ */
+export function stripReasoningContentFromMessages(args: Record<string, unknown>): Record<string, unknown> {
+    if (!Array.isArray(args.messages)) {
+        return args;
+    }
+
+    return {
+        ...args,
+        messages: args.messages.map((msg: unknown) => {
+            if (
+                typeof msg === "object" &&
+                msg !== null &&
+                "role" in msg &&
+                (msg as { role?: unknown }).role === "assistant"
+            ) {
+                const {
+                    reasoning_content: _reasoningContent,
+                    reasoning: _reasoning,
+                    ...rest
+                } = msg as Record<string, unknown>;
+                return rest;
+            }
+            return msg;
+        }),
+    };
+}
+
 /**
  * Creates an OpenAI-compatible provider instance.
  */
-export function createOpenAICompatibleProvider(options?: { apiKey?: string; baseURL?: string }) {
+export function createOpenAICompatibleProvider(options?: OpenAICompatibleProviderOptions) {
+    const shouldStrip = options?.stripReasoningContent ?? (Bun.env.STRIP_REASONING_CONTENT !== "false");
+
     return createOpenAICompatible({
         name: "openai-compatible",
         baseURL: options?.baseURL || Bun.env.OPENAI_BASE_URL || "",
         apiKey: options?.apiKey || Bun.env.OPENAI_API_KEY,
+        transformRequestBody: shouldStrip ? stripReasoningContentFromMessages : undefined,
     });
 }
 
