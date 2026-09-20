@@ -72,3 +72,17 @@ export function snakeToCamelCase(str: string): string {
         group.toUpperCase().replace("-", "").replace("_", ""),
     );
 }
+
+/**
+ * Sanitizes model reply for chat platforms (Discord/LINE).
+ * - Normalizes literal <br> or <br/> tags to real newlines
+ * - Strips raw retrieval citation markers like 【1†L1-L5】
+ */
+export function sanitizeChatReply(text: string): string {
+    if (!text) return "";
+    return text
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/【\d+†[^】]*】/g, "")
+        .trim();
+}
+
