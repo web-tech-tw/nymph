@@ -57,6 +57,7 @@
     "elysia": "^1.4.29",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "8.12.0",
-    "nanoid": "^6.0.1"
+    "nanoid": "^6.0.1",
+    "unpdf": "^1.8.1"
   }
 }

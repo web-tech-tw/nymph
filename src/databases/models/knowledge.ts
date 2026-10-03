@@ -12,6 +12,14 @@ export interface IKnowledgeDocument {
         };
         participants?: string[];
         rawMessageCount?: number;
+        docType?: string;
+        sourceHash?: string;
+        sourceChannelId?: string;
+        knowledgeCollection?: string;
+        uploadedBy?: string;
+        transactionId?: string;
+        originalFileName?: string;
+        extractionStatus?: string;
     };
     createdAt?: Date;
     updatedAt?: Date;
@@ -30,6 +38,14 @@ const KnowledgeSchema = new Schema<IKnowledgeDocument>(
             },
             participants: { type: [String], default: [] },
             rawMessageCount: { type: Number, default: 0 },
+            docType: { type: String, index: true },
+            sourceHash: { type: String, index: true },
+            sourceChannelId: { type: String },
+            knowledgeCollection: { type: String },
+            uploadedBy: { type: String },
+            transactionId: { type: String },
+            originalFileName: { type: String },
+            extractionStatus: { type: String },
         },
     },
     {
