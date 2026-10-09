@@ -4,6 +4,7 @@ import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
 import { formatUserProfileContext } from "../utils/prompts";
 import { readReceivedImage } from "../utils/media";
+import { extractArxivUrls, formatArxivPaperTag, sanitizeArxivPaperTags } from "../utils/arxiv";
 import { sanitizeChatReply } from "../utils/text";
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -39,6 +40,12 @@ export class Chat implements ChatAgent {
                         image: imageBytes,
                     },
                 ];
+            }
+        } else {
+            // Deterministic trigger: detected arxiv URLs force the agent to read them via firecrawl
+            const arxivUrls = extractArxivUrls(ctx.content);
+            if (arxivUrls.length > 0) {
+                userContent = `${sanitizeArxivPaperTags(this.buildContext(ctx))}\n${formatArxivPaperTag(arxivUrls)}`;
             }
         }
 
