@@ -17,6 +17,7 @@ import type { DiscordProviderParams } from "../types/discord";
 
 import { sliceContent } from "../utils/text";
 import { saveReceivedImage } from "../utils/media";
+import { extractArxivUrls } from "../utils/arxiv";
 
 export class DiscordProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.Discord;
@@ -62,13 +63,16 @@ export class DiscordProvider implements BasePlatformProvider {
             const isDirectMessage = !message.guild;
             const isMentioned = client.user ? message.mentions.users.has(client.user.id) : false;
 
-            if (!isDirectMessage && !isMentioned) return;
-
             let cleanContent = message.content;
             if (client.user) {
                 const mentionRegex = new RegExp(`<@!?${client.user.id}>`, "g");
                 cleanContent = cleanContent.replace(mentionRegex, "").trim();
             }
+
+            // arxiv links trigger a paper read even without an explicit mention
+            const hasArxivUrl = extractArxivUrls(cleanContent).length > 0;
+
+            if (!isDirectMessage && !isMentioned && !hasArxivUrl) return;
 
             const imageAttachments = message.attachments.filter(
                 (att) => att.contentType?.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(att.name || ""),
