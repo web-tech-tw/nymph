@@ -13,6 +13,7 @@ import { server as defaultServer, type HttpServer } from "../routes";
 import { queryKnowledgeDocuments } from "../agents/tools/knowledge-docs";
 import { findAndTouchMcpToken } from "../databases/models/mcp-token";
 import { getUserProfile, type IUserProfile } from "../databases/models/user-profile";
+import { flattenArxivReply } from "../utils/arxiv";
 
 export class McpProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.MCP;
@@ -173,7 +174,7 @@ export class McpProvider implements BasePlatformProvider {
                         content: [
                             {
                                 type: "text",
-                                text: replyText || "Nymph processed your request with no output.",
+                                text: flattenArxivReply(replyText) || "Nymph processed your request with no output.",
                             },
                         ],
                     };

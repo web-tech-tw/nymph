@@ -1,5 +1,6 @@
 import {
     Client,
+    EmbedBuilder,
     GatewayIntentBits,
     Partials,
     Events,
@@ -17,7 +18,7 @@ import type { DiscordProviderParams } from "../types/discord";
 
 import { sliceContent } from "../utils/text";
 import { saveReceivedImage } from "../utils/media";
-import { extractArxivUrls } from "../utils/arxiv";
+import { extractArxivUrls, parseArxivReplyCard, type ArxivReplyCard } from "../utils/arxiv";
 
 export class DiscordProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.Discord;
@@ -132,7 +133,7 @@ export class DiscordProvider implements BasePlatformProvider {
                     type: "text",
                     content: cleanContent,
                     reply: async (text: string) => {
-                        await this.sendText(message.channel.id, text);
+                        await this.sendReply(message.channel.id, text);
                     },
                 };
 
@@ -163,6 +164,46 @@ export class DiscordProvider implements BasePlatformProvider {
 
     onCommand(cb: CommandCallback): void {
         this.#commandCallbacks.push(cb);
+    }
+
+    /**
+     * Sends an agent reply: arxiv card blocks render as an embed card,
+     * everything else falls back to plain text.
+     */
+    async sendReply(roomId: string, content: string): Promise<void> {
+        const card = parseArxivReplyCard(content);
+        if (!card) {
+            await this.sendText(roomId, content);
+            return;
+        }
+        await this.sendArxivCard(roomId, card);
+    }
+
+    private async sendArxivCard(roomId: string, card: ArxivReplyCard): Promise<void> {
+        const channel = await this.#client?.channels.fetch(roomId).catch((err) => {
+            console.error(`[DiscordProvider] Failed to fetch channel ${roomId}:`, err);
+            return null;
+        });
+        if (!channel?.isSendable()) {
+            console.error(`[DiscordProvider] Channel ${roomId} is not sendable, falling back to text`);
+            await this.sendText(roomId, card.summary);
+            return;
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor(0xb31b1b)
+            .setTitle(card.title.slice(0, 256))
+            .setURL(card.url || null)
+            .setDescription(card.summary.slice(0, 4096))
+            .addFields({ name: "心得", value: card.comment.slice(0, 1024) || "—" })
+            .setFooter({ text: "arXiv 論文速覽" })
+            .setTimestamp();
+
+        try {
+            await channel.send({ embeds: [embed] });
+        } catch (err) {
+            console.error(`[DiscordProvider] Failed to send arxiv card to channel ${roomId}:`, err);
+        }
     }
 
     async sendText(roomId: string, content: string): Promise<void> {

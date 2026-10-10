@@ -55,3 +55,60 @@ export function sanitizeArxivPaperTags(content: string): string {
             match.replace(/</g, "&lt;").replace(/>/g, "&gt;"),
         );
 }
+
+/**
+ * Structured card payload the agent must emit when an arxiv_paper tag triggers.
+ * Discord renders it as an embed card; other platforms render it as plain text.
+ */
+export interface ArxivReplyCard {
+    title: string;
+    url: string;
+    summary: string;
+    comment: string;
+}
+
+const CARD_BLOCK_REGEX = /<arxiv_reply>([\s\S]*?)<\/arxiv_reply>/i;
+
+function readCardField(block: string, name: string): string {
+    const match = block.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, "i"));
+    const value = match?.[1];
+    return value ? value.trim() : "";
+}
+
+/**
+ * Parses the <arxiv_reply> block from an agent reply.
+ * Returns null when no valid card block is present.
+ */
+export function parseArxivReplyCard(text: string): ArxivReplyCard | null {
+    if (!text) return null;
+    const block = text.match(CARD_BLOCK_REGEX)?.[1];
+    if (!block) return null;
+
+    const card: ArxivReplyCard = {
+        title: readCardField(block, "title"),
+        url: readCardField(block, "url"),
+        summary: readCardField(block, "summary"),
+        comment: readCardField(block, "comment"),
+    };
+    if (!card.title || !card.summary) return null;
+    return card;
+}
+
+/**
+ * Renders a card payload as clean plain text for non-embed platforms.
+ */
+export function renderArxivReplyText(card: ArxivReplyCard): string {
+    const lines = [`論文：${card.title}`];
+    if (card.url) lines.push(card.url);
+    lines.push("", `簡介：${card.summary}`);
+    if (card.comment) lines.push(`心得：${card.comment}`);
+    return lines.join("\n");
+}
+
+/**
+ * Replaces a card block with its plain-text form; returns non-card text unchanged.
+ */
+export function flattenArxivReply(text: string): string {
+    const card = parseArxivReplyCard(text);
+    return card ? renderArxivReplyText(card) : text;
+}

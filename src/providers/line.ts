@@ -11,6 +11,7 @@ import { server as defaultServer, type HttpServer } from "../routes";
 import { sliceContent } from "../utils/text";
 import { extractSourceId } from "../utils/line";
 import { saveReceivedImage } from "../utils/media";
+import { flattenArxivReply } from "../utils/arxiv";
 
 export class LineProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.LINE;
@@ -120,7 +121,7 @@ export class LineProvider implements BasePlatformProvider {
                 type: "text",
                 content,
                 reply: async (text: string) => {
-                    await this.sendText(sourceId, text);
+                    await this.sendText(sourceId, flattenArxivReply(text));
                 },
             };
 
