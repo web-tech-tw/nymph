@@ -18,6 +18,7 @@ import type { DiscordProviderParams } from "../types/discord";
 
 import { sliceContent } from "../utils/text";
 import { saveReceivedImage } from "../utils/media";
+import { formatReplyBreadcrumb } from "../utils/prompts";
 import { extractArxivUrls, parseArxivReplyCard, type ArxivReplyCard } from "../utils/arxiv";
 
 export class DiscordProvider implements BasePlatformProvider {
@@ -87,6 +88,23 @@ export class DiscordProvider implements BasePlatformProvider {
                 });
             }
 
+            // Resolve the replied-to message (reply chain, one level deep)
+            const referenced = message.reference?.messageId
+                ? await message.fetchReference().catch(() => null)
+                : null;
+            let replyTo: ChatContext["replyTo"];
+            if (referenced) {
+                const refAuthor =
+                    referenced.member?.displayName ?? referenced.author.displayName ?? referenced.author.username;
+                // breadcrumb stays with the stored content; full text only lives for this turn
+                cleanContent = `${formatReplyBreadcrumb(refAuthor, referenced.content)}\n${cleanContent}`;
+                if (referenced.author.id !== client.user?.id) {
+                    replyTo = { author: refAuthor, content: referenced.content };
+                }
+            } else if (message.reference?.messageId) {
+                cleanContent = `回覆（原始訊息已不存在）\n${cleanContent}`;
+            }
+
             for (const [, attachment] of imageAttachments) {
                 try {
                     const res = await fetch(attachment.url);
@@ -132,6 +150,7 @@ export class DiscordProvider implements BasePlatformProvider {
                     },
                     type: "text",
                     content: cleanContent,
+                    replyTo,
                     reply: async (text: string) => {
                         await this.sendReply(message.channel.id, text);
                     },

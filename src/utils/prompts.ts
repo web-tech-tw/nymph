@@ -125,3 +125,29 @@ export function formatUserProfileContext(
     const tag = formatUserProfileTag(sender);
     return tag ? `${content}\n${tag}` : content;
 }
+
+/** Max length of the persistent reply breadcrumb preview (single line). */
+const REPLY_BREADCRUMB_MAX_LENGTH = 60;
+
+/** Max length of the full referenced message content injected into the current turn. */
+const REPLY_TO_TAG_MAX_LENGTH = 500;
+
+/**
+ * Formats a short one-line breadcrumb identifying the message being replied to.
+ * This snippet is persisted with the message content, so it must stay small.
+ */
+export function formatReplyBreadcrumb(author: string, content: string): string {
+    const preview = content.replace(/\s+/g, " ").trim().slice(0, REPLY_BREADCRUMB_MAX_LENGTH);
+    const suffix = preview.length < content.replace(/\s+/g, " ").trim().length ? "…" : "";
+    const quote = preview ? `"${preview}${suffix}"` : "(無文字內容)";
+    return `回覆 ${author}: ${quote}`;
+}
+
+/**
+ * Formats a referenced-message XML tag carrying the full (length-capped) content.
+ * Only attached to the current turn's prompt, never stored in chat history.
+ */
+export function formatReplyToTag(replyTo: { author: string; content: string }): string {
+    const content = replyTo.content.trim().slice(0, REPLY_TO_TAG_MAX_LENGTH);
+    return `<referenced_message author="${replyTo.author}">${content}</referenced_message>`;
+}

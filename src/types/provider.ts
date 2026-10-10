@@ -35,11 +35,21 @@ export interface UserProfile {
 
 export type MessageContentType = "text" | "image";
 
+/**
+ * Context about the message this message replies to (Discord reply, etc.).
+ * Injected into the current turn's prompt only; never persisted to history.
+ */
+export interface ReplyToContext {
+    author: string;
+    content: string;
+}
+
 export interface ChatContext {
     platformName: PlatformName;
     roomId: string;
     sender: UserProfile;
     type: MessageContentType;
     content: string;
+    replyTo?: ReplyToContext;
     reply(content: string): Promise<void>;
 }
