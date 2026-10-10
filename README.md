@@ -1,51 +1,53 @@
-# Nymph (寧芙)
+# Nymph
 
-> **您的專屬 AI 技術顧問**  
-> 來自 Web-Tech-TW  
-> 匠心打造 以開源 AI 技術驅動的多平台智慧技術顧問服務
+[正體中文](README.zh-TW.md) | English
 
-Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣網際網路技術推廣組織（Web Tech TW）營運與維護，專為開發者提供專業、深入且具脈絡的系統架構諮詢、除錯指引與工程經驗檢索。
+> **Your personal AI technical consultant**  
+> From Web-Tech-TW  
+> Meticulously crafted — a multi-platform intelligent technical consultant powered by open-source AI
+
+Nymph is a community-driven senior technical consultant agent service, operated and maintained by the Taiwan Web Technology Promotion Organization (Web Tech TW), providing developers with professional, in-depth, and contextual system architecture consulting, debugging guidance, and engineering experience retrieval.
 
 ![Nymph Avatar](avatar.png)
 
 ---
 
-## 服務核心能力
+## Core Capabilities
 
-* **資深技術架構諮詢**：提供前端、後端、雲端架構、網路通訊與資安素養等領域的專業技術建議與除錯診斷。
-* **社群工程知識庫檢索**：即時檢索社群歷年沉澱的技術討論、架構決策紀錄與真實除錯筆記。
-* **長脈絡多輪對話**：具備上下文理解與對話記憶能力，在多輪討論中持續追蹤問題脈絡。
-* **跨平台與多元管道支援**：支援透過 Discord、LINE，或透過 Model Context Protocol (MCP) 直接接入個人開發環境。
+* **Senior technical architecture consulting**: Professional advice and debugging diagnosis across frontend, backend, cloud architecture, networking, and security literacy.
+* **Community engineering knowledge retrieval**: Instantly search years of accumulated technical discussions, architecture decision records, and real debugging notes from the community.
+* **Long-context multi-turn conversation**: Context understanding and conversational memory, continuously tracking the problem thread across multiple rounds of discussion.
+* **Cross-platform, multi-channel support**: Available through Discord and LINE, or integrated directly into your personal development environment via the Model Context Protocol (MCP).
 
 ---
 
-## 如何使用 Nymph 服務
+## How to Use Nymph
 
-### 1. 在 Discord 中使用
+### 1. On Discord
 
-* **邀請機器人**：點擊 [邀請 Nymph 至 Discord 伺服器](https://discord.com/oauth2/authorize?client_id=921702227016560690)。
-* **伺服器頻道**：在已加入 Nymph 的伺服器頻道中 `@Nymph` 並輸入你的問題。
-* **私訊諮詢**：直接向 Nymph 發送私訊 (DM) 進行一對一技術諮詢。
+* **Invite the bot**: Click [Invite Nymph to your Discord server](https://discord.com/oauth2/authorize?client_id=921702227016560690).
+* **Server channels**: `@Nymph` in any channel of a server Nymph has joined, then ask your question.
+* **Direct messages**: Send Nymph a DM for one-on-one technical consulting.
 
-### 2. 在 LINE 中使用
+### 2. On LINE
 
-* **一對一諮詢**：點擊 [加入 Nymph 官方帳號](https://line.me/R/ti/p/@336jwweq) 為好友，直接發送訊息進行諮詢。
-* **群組諮詢**：將 Nymph 邀請加入 LINE 群組，即可在群組中發送訊息進行提問。
+* **One-on-one consulting**: Add the [Nymph official account](https://line.me/R/ti/p/@336jwweq) as a friend and chat directly.
+* **Group consulting**: Invite Nymph into a LINE group and ask questions right in the group.
 
-### 3. 在個人開發工具中使用（透過 MCP 遠端串接）
+### 3. In your personal dev tools (via remote MCP)
 
-你可以透過 Model Context Protocol (MCP) 標準，將 Nymph 作為遠端技術顧問直接整合進你的編輯器或 AI 客戶端（如 Antigravity、Claude Code/Desktop、Codex、Cursor 等）。
+Through the Model Context Protocol (MCP) standard, you can integrate Nymph as a remote technical consultant directly into your editor or AI client (such as Antigravity, Claude Code/Desktop, Codex, Cursor, etc.).
 
-#### 步驟一：申請 MCP 連線權杖 (Token)
+#### Step 1: Request an MCP connection token
 
-1. 開啟瀏覽器前往 Nymph 服務網站的權杖管理頁面（[https://web-tech.tw/nymph/mcp/tokens](https://web-tech.tw/nymph/mcp/tokens)）。
-2. 點擊「使用 Sara 登入」，透過臺灣網際網路技術推廣組織的 Sara 統一身分系統完成登入。
-3. 在管理介面中輸入權杖標籤（例如：`Cursor IDE` 或 `My MacBook`），點擊「簽發新權杖」。
-4. 複製產生的專屬權杖金鑰（Token）。
+1. Open the token management page of the Nymph service website ([https://web-tech.tw/nymph/mcp/tokens](https://web-tech.tw/nymph/mcp/tokens)).
+2. Click "Sign in with Sara" and log in through the Taiwan Web Technology Promotion Organization's unified Sara identity system.
+3. Enter a token label (e.g. `Cursor IDE` or `My MacBook`) and click "Issue new token".
+4. Copy the generated token.
 
-#### 步驟二：在個人工具中掛載 Nymph
+#### Step 2: Mount Nymph in your tool
 
-以 **Antigravity** 為例，將 Nymph 伺服器資訊加入你的 MCP 設定檔（如 `mcp_config.json` 或 `mcp.json`）：
+Taking **Antigravity** as an example, add the Nymph server to your MCP configuration file (such as `mcp_config.json` or `mcp.json`):
 
 ```json
 {
@@ -54,48 +56,118 @@ Nymph 是一個由社群驅動的資深技術顧問智慧體服務，由臺灣�
       "type": "http",
       "url": "https://web-tech.tw/nymph/mcp",
       "headers": {
-        "Authorization": "Bearer <你的_MCP_TOKEN>"
+        "Authorization": "Bearer <YOUR_MCP_TOKEN>"
       }
     }
   }
 }
 ```
 
-#### 步驟三：在編輯器中調用 Nymph 工具
+#### Step 3: Invoke Nymph tools in your editor
 
-完成連線後，你的 AI 助手即可在對話中直接調用以下 Nymph 專屬能力：
+Once connected, your AI assistant can directly invoke the following Nymph capabilities in conversation:
 
-* `consult_nymph_wisdom`：向寧芙發起深入的技術諮詢、架構分析與除錯診斷。
-* `absorb_nymph_wisdom`：檢索並汲取社群歷年沉澱的工程知識庫、架構決策與解決方案。
-* `my_nymph_impression`：取得這份 MCP 連線權杖持有者的個人檔案。
-
----
-
-## 常見諮詢範例
-
-* **架構與技術選型**
-  > 「我們正在規劃大型前後端分離專案，請分析微前端架構與 Monorepo 方案在維護成本與效能上的取捨。」
-
-* **疑難排查與錯誤診斷**
-  > 「在 Docker 容器內編譯原生 Node.js 模組時出現 node-gyp 報錯，常見的原因與排查步驟是什麼？」
-
-* **社群知識庫查詢**
-  > 「請幫我搜尋社群知識庫，看看過往關於 OAuth2 與 JWT 權杖更新機制的最佳實踐與決策紀錄。」
-
-* **網路通訊與資安概念**
-  > 「請說明 HTTP/2 多工傳輸與 HTTP/3 基於 QUIC 的連線機制在封包遺失場景下的差異。」
+* `consult_nymph_wisdom`: Start an in-depth technical consultation, architecture analysis, or debugging diagnosis with Nymph.
+* `absorb_nymph_wisdom`: Search and absorb the community's accumulated engineering knowledge base, architecture decisions, and solutions.
+* `my_nymph_impression`: Retrieve the profile of this MCP connection token holder.
 
 ---
 
-## 關於我們
+## Example Consultations
 
-Nymph 由臺灣網際網路技術推廣組織 (Taiwan Web Technology Promotion Organization) 維護與推廣，旨在協助社群成員互相交流技術、傳承工程經驗與共同成長。
+* **Architecture and technology selection**
+  > "We are planning a large frontend-backend separated project. Please analyze the trade-offs between a micro-frontend architecture and a Monorepo approach in terms of maintenance cost and performance."
 
-* 官方網站：[臺灣網際網路技術推廣組織](https://web-tech.tw)
-* 機器人安裝：[Discord 機器人](https://discord.com/oauth2/authorize?client_id=921702227016560690)｜[LINE 官方帳號](https://line.me/R/ti/p/@336jwweq)
+* **Troubleshooting and error diagnosis**
+  > "Compiling native Node.js modules inside a Docker container fails with a node-gyp error. What are the common causes and troubleshooting steps?"
+
+* **Community knowledge base lookup**
+  > "Please search the community knowledge base for past best practices and decision records on OAuth2 and JWT token refresh mechanisms."
+
+* **Networking and security concepts**
+  > "Please explain the difference between HTTP/2 multiplexing and HTTP/3's QUIC-based connections in packet-loss scenarios."
 
 ---
 
-## 授權
+## Self-hosting Nymph
 
-本專案採用 [MIT License](LICENSE) 授權。
+Nymph is open-sourced under the [MIT License](LICENSE) — you are welcome to deploy your own instance.
+
+### 1. Prerequisites
+
+* [Bun](https://bun.sh/) (>= 1.2)
+* MongoDB
+* An OpenAI-compatible API key
+* As needed: a Discord bot token, LINE official account credentials
+
+### 2. Install and Configure
+
+```sh
+bun install
+cp .env.sample .env     # Fill in your keys and connection settings
+cp mcp.toml.sample mcp.toml
+```
+
+Main environment variables:
+
+| Variable | Description |
+| :--- | :--- |
+| `BASE_URL` / `HTTP_PORT` | HTTP service URL and port (default: `3000`) |
+| `MONGODB_URI` | MongoDB connection string |
+| `OPENAI_API_KEY` | OpenAI-compatible API key |
+| `OPENAI_BASE_URL` | OpenAI-compatible base URL |
+| `OPENAI_MODEL` | Model name |
+| `DISCORD_BOT_TOKEN` | Discord bot token |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE official account credentials |
+| `SARA_INTE_HOST` / `SARA_RECV_HOST` | Sara unified identity system endpoints |
+
+### 3. Don't Have an LLM API Key?
+
+No budget for an LLM API? No problem!
+
+[NVIDIA Build](https://build.nvidia.com/explore/discover) hosts 100+ models
+behind a free, OpenAI-compatible API.
+Sign up with an email, no credit card required,
+open any model page, and click **Get API Key** to receive a free `nvapi-` key.
+
+The recommended model on NVIDIA NIM is **`openai/gpt-oss-20b`**,
+an open-weight model with strong multilingual reasoning and low latency —
+it is also the default in `.env.sample`:
+
+```sh
+OPENAI_API_KEY="nvapi-..."
+OPENAI_BASE_URL="https://integrate.api.nvidia.com/v1"
+OPENAI_MODEL="openai/gpt-oss-20b"
+```
+
+### 4. Run
+
+```sh
+# Development (hot reload)
+bun run dev
+
+# Production
+bun run start
+```
+
+Or run it with Docker:
+
+```sh
+docker build -t nymph .
+docker run --env-file .env -p 3000:3000 nymph
+```
+
+---
+
+## About Us
+
+Nymph is maintained and promoted by the Taiwan Web Technology Promotion Organization, aiming to help community members exchange technical knowledge, pass on engineering experience, and grow together.
+
+* Official website: [Taiwan Web Technology Promotion Organization](https://web-tech.tw)
+* Install the bot: [Discord bot](https://discord.com/oauth2/authorize?client_id=921702227016560690) | [LINE official account](https://line.me/R/ti/p/@336jwweq)
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
