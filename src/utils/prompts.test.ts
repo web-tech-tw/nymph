@@ -6,6 +6,8 @@ import {
     formatUserProfileTag,
     formatUserProfileContext,
     formatImageMessageTag,
+    formatReplyBreadcrumb,
+    formatReplyToTag,
     ANTHROPIC_CACHE_CONTROL,
 } from "./prompts";
 import type { ModelMessage } from "ai";
@@ -135,6 +137,46 @@ describe("Anthropic Thinking & Provider Options Utilities", () => {
         it("should format image message XML tag with id", () => {
             const tag = formatImageMessageTag("6OXbPlS60-Zpo1eZdwPAW");
             expect(tag).toBe("<image id=\"6OXbPlS60-Zpo1eZdwPAW\">User sent an image.</image>");
+        });
+    });
+
+    describe("formatReplyBreadcrumb", () => {
+        it("should format a short breadcrumb with quoted preview", () => {
+            expect(formatReplyBreadcrumb("Alice", "hello there")).toBe("回覆 Alice: \"hello there\"");
+        });
+
+        it("should truncate long content and add ellipsis", () => {
+            const long = "x".repeat(200);
+            const breadcrumb = formatReplyBreadcrumb("Alice", long);
+            expect(breadcrumb).toBe(`回覆 Alice: "${"x".repeat(60)}…"`);
+        });
+
+        it("should collapse newlines into single spaces", () => {
+            expect(formatReplyBreadcrumb("Alice", "line1\nline2\t tab")).toBe("回覆 Alice: \"line1 line2 tab\"");
+        });
+
+        it("should mark empty content explicitly", () => {
+            expect(formatReplyBreadcrumb("Alice", "")).toBe("回覆 Alice: (無文字內容)");
+            expect(formatReplyBreadcrumb("Alice", "   ")).toBe("回覆 Alice: (無文字內容)");
+        });
+    });
+
+    describe("formatReplyToTag", () => {
+        it("should wrap full content in a referenced_message tag", () => {
+            expect(formatReplyToTag({ author: "Alice", content: "full text" })).toBe(
+                "<referenced_message author=\"Alice\">full text</referenced_message>",
+            );
+        });
+
+        it("should cap content at 500 characters", () => {
+            const tag = formatReplyToTag({ author: "Bob", content: "y".repeat(600) });
+            expect(tag).toBe(`<referenced_message author="Bob">${"y".repeat(500)}</referenced_message>`);
+        });
+
+        it("should trim surrounding whitespace", () => {
+            expect(formatReplyToTag({ author: "Bob", content: "  padded  " })).toBe(
+                "<referenced_message author=\"Bob\">padded</referenced_message>",
+            );
         });
     });
 });

@@ -2,7 +2,7 @@ import { ToolLoopAgent, type ModelMessage } from "ai";
 import type { ChatAgentParams, ChatAgent } from "../types/agent";
 import type { ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
-import { formatUserProfileContext } from "../utils/prompts";
+import { formatUserProfileContext, formatReplyToTag } from "../utils/prompts";
 import { readReceivedImage } from "../utils/media";
 import { extractArxivUrls, formatArxivPaperTag, sanitizeArxivPaperTags } from "../utils/arxiv";
 import { sanitizeChatReply } from "../utils/text";
@@ -23,7 +23,11 @@ export class Chat implements ChatAgent {
     }
 
     private buildContext(ctx: ChatContext): string {
-        return formatUserProfileContext(ctx.content, ctx.sender);
+        let content = formatUserProfileContext(ctx.content, ctx.sender);
+        if (ctx.replyTo) {
+            content += `\n${formatReplyToTag(ctx.replyTo)}`;
+        }
+        return content;
     }
 
     private async buildMessages(ctx: ChatContext): Promise<ModelMessage[]> {
@@ -170,10 +174,15 @@ export async function createChatAgent(): Promise<Chat> {
 
     const tools = getActiveToolRegistry();
 
+    const reasoningEffort = Bun.env.OPENAI_REASONING_EFFORT?.trim();
+
     return new Chat({
         model: provider(Bun.env.OPENAI_MODEL || ""),
         instructions,
         toolSet: tools,
+        providerOptions: reasoningEffort
+            ? { "openai-compatible": { reasoningEffort } }
+            : undefined,
     });
 }
 
