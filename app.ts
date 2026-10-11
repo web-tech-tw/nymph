@@ -5,26 +5,27 @@ import { GlobalProvider } from "./src/providers/global";
 import { DiscordProvider } from "./src/providers/discord";
 import { LineProvider } from "./src/providers/line";
 import { McpProvider } from "./src/providers/mcp";
+import { startScheduledPrompts, stopScheduledPrompts } from "./src/scheduler";
 import { server } from "./src/routes";
 import type { ChatContext } from "./src/types/provider";
 
 await connectDatabase();
 await getAllTools();
 
-const providers = [
-    new DiscordProvider({
-        token: Bun.env.DISCORD_BOT_TOKEN || "",
-        presence: Bun.env.DISCORD_PRESENCE || "",
-    }),
-    new LineProvider({
-        token: Bun.env.LINE_CHANNEL_ACCESS_TOKEN || "",
-        secret: Bun.env.LINE_CHANNEL_SECRET || "",
-        server,
-    }),
-    new McpProvider({
-        server,
-    }),
-];
+const discordProvider = new DiscordProvider({
+    token: Bun.env.DISCORD_BOT_TOKEN || "",
+    presence: Bun.env.DISCORD_PRESENCE || "",
+});
+const lineProvider = new LineProvider({
+    token: Bun.env.LINE_CHANNEL_ACCESS_TOKEN || "",
+    secret: Bun.env.LINE_CHANNEL_SECRET || "",
+    server,
+});
+const mcpProvider = new McpProvider({
+    server,
+});
+
+const providers = [discordProvider, lineProvider, mcpProvider];
 
 const provider = new GlobalProvider(providers);
 
@@ -40,12 +41,16 @@ provider.onCommand(async (_command, _args, ctx) => {
 
 await provider.start();
 
+// Scheduled prompts are Discord-only and configured exclusively via schedule.toml
+await startScheduledPrompts(discordProvider);
+
 const port = Number(Bun.env.HTTP_PORT || 3000);
 server.listen(port);
 console.info(`[Nymph] HTTP Server listening on port ${port}`);
 
 const shutdown = async () => {
     console.info("[Nymph] Shutting down...");
+    stopScheduledPrompts();
     await closeMcpClients();
     process.exit(0);
 };

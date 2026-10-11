@@ -1,0 +1,17 @@
+# Discord Scheduled Prompts Configuration
+# Copy this file to `schedule.toml` to configure scheduled prompts.
+# Discord-only. Jobs can ONLY be configured here; there is no tool or command to change them.
+
+[[prompts]]
+enabled = true
+name = "morning-greeting"
+time = "0 9 * * *"                  # cron expression (5-field, local timezone)
+channel_id = "123456789012345678"   # Discord channel ID the reply is sent to
+prompt = "向頻道成員道早安，並簡短分享一則今日的科技新知。"
+
+[[prompts]]
+enabled = false
+name = "weekly-retro"
+time = "0 18 * * 5"
+channel_id = "123456789012345678"
+prompt = "幫大家回顧本週頻道裡的技術討論重點。"
