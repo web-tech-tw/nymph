@@ -117,6 +117,7 @@ Main environment variables:
 | `OPENAI_API_KEY` | OpenAI-compatible API key |
 | `OPENAI_BASE_URL` | OpenAI-compatible base URL |
 | `OPENAI_MODEL` | Model name |
+| `OPENAI_REASONING_EFFORT` | Optional reasoning effort (e.g. `low` / `medium` / `high`; supported values depend on the provider and model) |
 | `DISCORD_BOT_TOKEN` | Discord bot token |
 | `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE official account credentials |
 | `SARA_INTE_HOST` / `SARA_RECV_HOST` | Sara unified identity system endpoints |

@@ -117,6 +117,7 @@ cp mcp.toml.sample mcp.toml
 | `OPENAI_API_KEY` | OpenAI 相容 API 金鑰 |
 | `OPENAI_BASE_URL` | OpenAI 相容 API 基礎網址 |
 | `OPENAI_MODEL` | 模型名稱 |
+| `OPENAI_REASONING_EFFORT` | 選填的思考強度(如 `low` / `medium` / `high`;可用值依供應商與模型而定) |
 | `DISCORD_BOT_TOKEN` | Discord Bot Token |
 | `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE 官方帳號金鑰 |
 | `SARA_INTE_HOST` / `SARA_RECV_HOST` | Sara 統一身分系統端點 |

@@ -174,10 +174,15 @@ export async function createChatAgent(): Promise<Chat> {
 
     const tools = getActiveToolRegistry();
 
+    const reasoningEffort = Bun.env.OPENAI_REASONING_EFFORT?.trim();
+
     return new Chat({
         model: provider(Bun.env.OPENAI_MODEL || ""),
         instructions,
         toolSet: tools,
+        providerOptions: reasoningEffort
+            ? { "openai-compatible": { reasoningEffort } }
+            : undefined,
     });
 }
 
