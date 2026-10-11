@@ -32,7 +32,7 @@ package-lock.json
 .env.*.local
 !.env.sample
 mcp.toml
-!mcp.toml.sample
+!mcp.sample.toml
 schedule.toml
 !schedule.sample.toml
 
