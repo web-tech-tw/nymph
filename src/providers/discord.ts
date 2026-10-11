@@ -20,6 +20,7 @@ import { sliceContent } from "../utils/text";
 import { saveReceivedImage } from "../utils/media";
 import { formatReplyBreadcrumb } from "../utils/prompts";
 import { extractArxivUrls, parseArxivReplyCard, type ArxivReplyCard } from "../utils/arxiv";
+import { convertMarkdownTablesToDiscordLists } from "../utils/markdown-table-ast";
 
 export class DiscordProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.Discord;
@@ -248,7 +249,8 @@ export class DiscordProvider implements BasePlatformProvider {
             return;
         }
 
-        const chunks = sliceContent(content, 2000);
+        const formattedContent = convertMarkdownTablesToDiscordLists(content);
+        const chunks = sliceContent(formattedContent, 2000);
         for (const chunk of chunks) {
             try {
                 await channel.send(chunk);
