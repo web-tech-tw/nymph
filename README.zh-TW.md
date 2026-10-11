@@ -105,7 +105,7 @@ Nymph 以 [MIT License](LICENSE) 開源，歡迎部署專屬於你的實例。
 ```sh
 bun install
 cp .env.sample .env     # 填入金鑰與連線設定
-cp mcp.toml.sample mcp.toml
+cp mcp.sample.toml mcp.toml
 ```
 
 主要環境變數：

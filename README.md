@@ -105,7 +105,7 @@ Nymph is open-sourced under the [MIT License](LICENSE) — you are welcome to de
 ```sh
 bun install
 cp .env.sample .env     # Fill in your keys and connection settings
-cp mcp.toml.sample mcp.toml
+cp mcp.sample.toml mcp.toml
 ```
 
 Main environment variables:
