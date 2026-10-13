@@ -1,5 +1,5 @@
 import { connectDatabase } from "./src/databases/connection";
-import { createChatAgent } from "./src/agents/chat";
+import { createChatAgent, handleChatError } from "./src/agents/chat";
 import { getAllTools, closeMcpClients } from "./src/agents/tools";
 import { GlobalProvider } from "./src/providers/global";
 import { DiscordProvider } from "./src/providers/discord";
@@ -30,9 +30,24 @@ const providers = [discordProvider, lineProvider, mcpProvider];
 const provider = new GlobalProvider(providers);
 
 provider.onMessage(async (ctx: ChatContext) => {
-    const agent = await createChatAgent();
-    const reply = await agent.replyMessage(ctx);
-    await ctx.reply(reply);
+    try {
+        const agent = await createChatAgent();
+        const reply = await agent.replyMessage(ctx);
+        if (reply) {
+            await ctx.reply(reply);
+        }
+    } catch (err: unknown) {
+        console.error("[Chat] Error processing message:", err);
+        const replyText = await handleChatError(err, ctx, async (opts) => {
+            const agent = await createChatAgent();
+            return await agent.replyMessage(ctx, opts);
+        });
+        if (replyText) {
+            await ctx.reply(replyText).catch((sendErr) => {
+                console.error("[Chat] Failed to send error reply:", sendErr);
+            });
+        }
+    }
 });
 
 provider.onCommand(async (_command, _args, ctx) => {

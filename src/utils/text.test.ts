@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { camelToSnakeCase, snakeToCamelCase, sliceContent, sanitizeChatReply } from "./text";
+import {
+    camelToSnakeCase,
+    snakeToCamelCase,
+    sliceContent,
+    sanitizeChatReply,
+    estimateTokens,
+    truncateText,
+    truncateToolResult,
+} from "./text";
 
 describe("Text Utilities", () => {
     describe("camelToSnakeCase", () => {
@@ -54,4 +62,51 @@ describe("Text Utilities", () => {
             expect(sanitizeChatReply(raw)).toBe("• Feature 1\n• Feature 2\n• Feature 3");
         });
     });
+
+    describe("estimateTokens", () => {
+        test("returns 0 for empty string", () => {
+            expect(estimateTokens("")).toBe(0);
+        });
+
+        test("estimates token count correctly (~4 chars per token)", () => {
+            expect(estimateTokens("abcd")).toBe(2);
+            expect(estimateTokens("a".repeat(400))).toBe(101);
+        });
+    });
+
+    describe("truncateText", () => {
+        test("returns short text unchanged", () => {
+            expect(truncateText("hello world", 100)).toBe("hello world");
+        });
+
+        test("truncates text exceeding maxTokens and appends note", () => {
+            const long = "a".repeat(500);
+            const truncated = truncateText(long, 50); // 50 tokens = 200 chars
+            expect(truncated.length).toBeLessThan(long.length);
+            expect(truncated.startsWith("a".repeat(200))).toBe(true);
+            expect(truncated).toContain("[輸出已省略");
+        });
+    });
+
+    describe("truncateToolResult", () => {
+        test("truncates strings exceeding token limit", () => {
+            const long = "x".repeat(1000);
+            const res = truncateToolResult(long, 100);
+            expect(typeof res).toBe("string");
+            expect((res as string).length).toBeLessThan(1000);
+        });
+
+        test("truncates JSON objects exceeding token limit", () => {
+            const largeObj = { data: "y".repeat(1000) };
+            const res = truncateToolResult(largeObj, 100);
+            expect(typeof res).toBe("string");
+            expect((res as string)).toContain("[輸出已省略");
+        });
+
+        test("leaves small objects unchanged", () => {
+            const smallObj = { key: "value" };
+            expect(truncateToolResult(smallObj, 100)).toEqual(smallObj);
+        });
+    });
 });
+

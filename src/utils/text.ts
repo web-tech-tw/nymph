@@ -86,3 +86,42 @@ export function sanitizeChatReply(text: string): string {
         .trim();
 }
 
+/**
+ * Estimates token count from a string using a fast heuristic (~4 chars per token).
+ */
+export function estimateTokens(text: string): number {
+    if (!text) return 0;
+    return Math.ceil((text.length + 3) / 4);
+}
+
+/**
+ * Truncates text if its estimated tokens exceed maxTokens.
+ */
+export function truncateText(text: string, maxTokens = 4000): string {
+    if (!text) return "";
+    const maxChars = maxTokens * 4;
+    if (text.length <= maxChars) return text;
+    const est = estimateTokens(text);
+    return text.slice(0, maxChars) + `\n... [輸出已省略，共約 ${est} tokens]`;
+}
+
+/**
+ * Truncates tool execution result if it exceeds maxTokens.
+ */
+export function truncateToolResult(result: unknown, maxTokens = 4000): unknown {
+    if (typeof result === "string") {
+        return truncateText(result, maxTokens);
+    }
+    if (result && typeof result === "object") {
+        try {
+            const str = JSON.stringify(result);
+            if (str.length > maxTokens * 4) {
+                return truncateText(str, maxTokens);
+            }
+        } catch {
+            // If circular or unstringifiable, return as-is
+        }
+    }
+    return result;
+}
+

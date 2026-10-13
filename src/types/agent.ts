@@ -8,6 +8,10 @@ export type ChatAgentParams = {
     providerOptions?: ConstructorParameters<typeof ToolLoopAgent>[0]["providerOptions"];
 };
 
+export interface ReplyMessageOptions {
+    aggressivePrune?: boolean;
+}
+
 export interface ChatAgent {
-    replyMessage(ctx: ChatContext): Promise<string>;
+    replyMessage(ctx: ChatContext, options?: ReplyMessageOptions): Promise<string>;
 }
