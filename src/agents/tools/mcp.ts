@@ -1,7 +1,7 @@
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import type { ToolSet } from "ai";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { snakeToCamelCase } from "../../utils/text";
+import { snakeToCamelCase, truncateToolResult } from "../../utils/text";
 
 export interface McpHttpTransportConfig {
     type: "http" | "sse";
@@ -296,7 +296,19 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<ToolSet>
                     continue;
                 }
                 const key = `${serverName}_${toolName}`;
-                scopedTools[key] = toolObj as ToolSet[string];
+                const rawTool = toolObj as { execute?: (...args: unknown[]) => Promise<unknown> };
+                if (typeof rawTool.execute === "function") {
+                    const origExecute = rawTool.execute.bind(rawTool);
+                    scopedTools[key] = {
+                        ...toolObj,
+                        execute: async (...args: unknown[]) => {
+                            const result = await origExecute(...args);
+                            return truncateToolResult(result, 4000);
+                        },
+                    } as ToolSet[string];
+                } else {
+                    scopedTools[key] = toolObj as ToolSet[string];
+                }
             }
 
             const scopedCount = Object.keys(scopedTools).length;
