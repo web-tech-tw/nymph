@@ -94,6 +94,18 @@ export function estimateTokens(text: string): number {
     return Math.ceil((text.length + 3) / 4);
 }
 
+export interface McpContentPart {
+    type: string;
+    text?: string;
+    [key: string]: unknown;
+}
+
+export interface McpCallToolResult {
+    content: McpContentPart[];
+    isError?: boolean;
+    [key: string]: unknown;
+}
+
 /**
  * Truncates text if its estimated tokens exceed maxTokens.
  */
@@ -106,22 +118,63 @@ export function truncateText(text: string, maxTokens = 4000): string {
 }
 
 /**
- * Truncates tool execution result if it exceeds maxTokens.
+ * Normalizes and truncates MCP tool output so that it is always guaranteed
+ * to be a valid object with `{ content: [...] }`.
+ * This prevents TypeError in upstream `@ai-sdk/mcp`'s `!('content' in result)` check
+ * when tools or wrappers return primitives.
+ */
+export function normalizeAndTruncateMcpResult(result: unknown, maxTokens = 4000): McpCallToolResult {
+    if (result == null) {
+        return { content: [{ type: "text", text: "" }] };
+    }
+
+    // If it's already an MCP result object with an array of content parts
+    if (
+        typeof result === "object" &&
+        result !== null &&
+        "content" in result &&
+        Array.isArray((result as { content: unknown }).content)
+    ) {
+        const rawResult = result as McpCallToolResult;
+        const newContent = rawResult.content.map((part) => {
+            if (part && typeof part === "object" && typeof part.text === "string") {
+                return {
+                    ...part,
+                    text: truncateText(part.text, maxTokens),
+                };
+            }
+            return part;
+        });
+        return {
+            ...rawResult,
+            content: newContent,
+        };
+    }
+
+    // If it's a string, wrap it as a single text content part
+    if (typeof result === "string") {
+        return {
+            content: [{ type: "text", text: truncateText(result, maxTokens) }],
+        };
+    }
+
+    // For any other primitive or non-standard object, stringify and wrap
+    let textRepr: string;
+    try {
+        textRepr = typeof result === "object" ? JSON.stringify(result) : String(result);
+    } catch {
+        textRepr = String(result);
+    }
+
+    return {
+        content: [{ type: "text", text: truncateText(textRepr, maxTokens) }],
+    };
+}
+
+/**
+ * Truncates tool execution result if it exceeds maxTokens, preserving object structure for MCP.
  */
 export function truncateToolResult(result: unknown, maxTokens = 4000): unknown {
-    if (typeof result === "string") {
-        return truncateText(result, maxTokens);
-    }
-    if (result && typeof result === "object") {
-        try {
-            const str = JSON.stringify(result);
-            if (str.length > maxTokens * 4) {
-                return truncateText(str, maxTokens);
-            }
-        } catch {
-            // If circular or unstringifiable, return as-is
-        }
-    }
-    return result;
+    return normalizeAndTruncateMcpResult(result, maxTokens);
 }
 

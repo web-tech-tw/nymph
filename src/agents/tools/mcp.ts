@@ -1,7 +1,7 @@
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import type { ToolSet } from "ai";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { snakeToCamelCase, truncateToolResult } from "../../utils/text";
+import { snakeToCamelCase, normalizeAndTruncateMcpResult } from "../../utils/text";
 
 export interface McpHttpTransportConfig {
     type: "http" | "sse";
@@ -296,19 +296,48 @@ async function connectServerWithRetry(config: McpServerConfig): Promise<ToolSet>
                     continue;
                 }
                 const key = `${serverName}_${toolName}`;
-                const rawTool = toolObj as { execute?: (...args: unknown[]) => Promise<unknown> };
-                if (typeof rawTool.execute === "function") {
-                    const origExecute = rawTool.execute.bind(rawTool);
-                    scopedTools[key] = {
-                        ...toolObj,
-                        execute: async (...args: unknown[]) => {
-                            const result = await origExecute(...args);
-                            return truncateToolResult(result, 4000);
-                        },
-                    } as ToolSet[string];
-                } else {
-                    scopedTools[key] = toolObj as ToolSet[string];
-                }
+                const rawTool = toolObj as {
+                    execute?: (args: unknown, options?: { toolCallId?: string }) => Promise<unknown>;
+                    toModelOutput?: (options: { output: unknown }) => unknown;
+                };
+
+                const origExecute = typeof rawTool.execute === "function" ? rawTool.execute.bind(rawTool) : undefined;
+                const origToModelOutput = typeof rawTool.toModelOutput === "function" ? rawTool.toModelOutput.bind(rawTool) : undefined;
+
+                const wrappedTool = {
+                    ...toolObj,
+                    ...(origExecute
+                        ? {
+                            execute: async (args: unknown, options?: { toolCallId?: string }) => {
+                                try {
+                                    const result = await origExecute(args, options);
+                                    return normalizeAndTruncateMcpResult(result, 4000);
+                                } catch (error) {
+                                    console.error(
+                                        `[MCP Tool Error] Server/Tool "${key}" failed (toolCallId: ${options?.toolCallId ?? "unknown"}):`,
+                                        error,
+                                    );
+                                    throw error;
+                                }
+                            },
+                        }
+                        : {}),
+                    ...(origToModelOutput
+                        ? {
+                            // Defensive wrapper against upstream @ai-sdk/mcp bug where !('content' in result)
+                            // throws TypeError when output is a primitive.
+                            toModelOutput: (options: { output: unknown }) => {
+                                const safeOutput =
+                                    options.output != null && typeof options.output === "object"
+                                        ? options.output
+                                        : normalizeAndTruncateMcpResult(options.output, 4000);
+                                return origToModelOutput({ output: safeOutput });
+                            },
+                        }
+                        : {}),
+                };
+
+                scopedTools[key] = wrappedTool as ToolSet[string];
             }
 
             const scopedCount = Object.keys(scopedTools).length;

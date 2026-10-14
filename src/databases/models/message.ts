@@ -6,6 +6,7 @@ import { formatUserProfileContext, formatImageMessageTag } from "../../utils/pro
 
 export interface IToolCallRecord {
     toolName: string;
+    toolCallId?: string;
     args?: Record<string, unknown>;
 }
 
@@ -32,6 +33,7 @@ const ChatMessageSchema = new Schema<IChatMessage>(
             type: [
                 {
                     toolName: { type: String, required: true },
+                    toolCallId: { type: String },
                     args: { type: Schema.Types.Mixed },
                 },
             ],

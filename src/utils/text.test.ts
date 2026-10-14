@@ -7,6 +7,7 @@ import {
     estimateTokens,
     truncateText,
     truncateToolResult,
+    normalizeAndTruncateMcpResult,
 } from "./text";
 
 describe("Text Utilities", () => {
@@ -88,25 +89,62 @@ describe("Text Utilities", () => {
         });
     });
 
+    describe("normalizeAndTruncateMcpResult", () => {
+        test("normalizes null and undefined to empty content object", () => {
+            const resNull = normalizeAndTruncateMcpResult(null);
+            expect(typeof resNull).toBe("object");
+            expect("content" in resNull).toBe(true);
+            expect(resNull.content[0].text).toBe("");
+
+            const resUndef = normalizeAndTruncateMcpResult(undefined);
+            expect(typeof resUndef).toBe("object");
+            expect("content" in resUndef).toBe(true);
+        });
+
+        test("wraps raw strings into valid MCP content object without type regression", () => {
+            const raw = "hello raw output";
+            const res = normalizeAndTruncateMcpResult(raw, 100);
+            expect(typeof res).toBe("object");
+            expect("content" in res).toBe(true);
+            expect(Array.isArray(res.content)).toBe(true);
+            expect(res.content[0].text).toBe("hello raw output");
+        });
+
+        test("wraps numbers and primitives into valid MCP content object", () => {
+            const res = normalizeAndTruncateMcpResult(12345, 100);
+            expect(typeof res).toBe("object");
+            expect("content" in res).toBe(true);
+            expect(res.content[0].text).toBe("12345");
+        });
+
+        test("preserves existing MCP CallToolResult structure and truncates inner text", () => {
+            const mcpObj = {
+                content: [
+                    { type: "text", text: "a".repeat(1000) },
+                    { type: "image", data: "base64..." },
+                ],
+                isError: false,
+            };
+            const res = normalizeAndTruncateMcpResult(mcpObj, 50); // 200 chars limit
+            expect(typeof res).toBe("object");
+            expect("content" in res).toBe(true);
+            expect(res.isError).toBe(false);
+            expect(res.content.length).toBe(2);
+            expect(res.content[0].text).toContain("[輸出已省略");
+            expect(res.content[1].type).toBe("image");
+        });
+    });
+
     describe("truncateToolResult", () => {
-        test("truncates strings exceeding token limit", () => {
+        test("always returns an object with content array for MCP compatibility", () => {
             const long = "x".repeat(1000);
-            const res = truncateToolResult(long, 100);
-            expect(typeof res).toBe("string");
-            expect((res as string).length).toBeLessThan(1000);
-        });
-
-        test("truncates JSON objects exceeding token limit", () => {
-            const largeObj = { data: "y".repeat(1000) };
-            const res = truncateToolResult(largeObj, 100);
-            expect(typeof res).toBe("string");
-            expect((res as string)).toContain("[輸出已省略");
-        });
-
-        test("leaves small objects unchanged", () => {
-            const smallObj = { key: "value" };
-            expect(truncateToolResult(smallObj, 100)).toEqual(smallObj);
+            const res = truncateToolResult(long, 100) as { content: Array<{ text: string }> };
+            expect(typeof res).toBe("object");
+            expect("content" in res).toBe(true);
+            expect(Array.isArray(res.content)).toBe(true);
+            expect(res.content[0].text.length).toBeLessThan(1000);
         });
     });
 });
+
 

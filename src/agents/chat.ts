@@ -251,27 +251,32 @@ export class Chat implements ChatAgent {
         });
 
         // 1. Extract and log tool calls if dispatched
+        const sessionId = `${ctx.platformName}:${ctx.roomId}`;
         const toolCalls: IToolCallRecord[] = (result.toolCalls || []).map((tc) => {
-            const rawTc = tc as unknown as { args?: Record<string, unknown>; input?: Record<string, unknown> };
+            const rawTc = tc as unknown as {
+                args?: Record<string, unknown>;
+                input?: Record<string, unknown>;
+                toolCallId?: string;
+            };
             return {
                 toolName: tc.toolName,
+                toolCallId: rawTc.toolCallId ?? (tc as { toolCallId?: string }).toolCallId,
                 args: rawTc.args ?? rawTc.input,
             };
         });
 
         if (toolCalls.length > 0) {
             for (const tc of toolCalls) {
-                console.info(`[Agent Tool] Dispatched: ${tc.toolName} args=${JSON.stringify(tc.args)}`);
+                console.info(
+                    `[Agent Tool] Dispatched: ${tc.toolName} (callId=${tc.toolCallId ?? "n/a"}, sessionId=${sessionId}) args=${JSON.stringify(tc.args)}`,
+                );
             }
         }
 
         // 2. Extract final assistant text reply (using result.text to exclude reasoning parts, and sanitize chat markup)
         const reply = sanitizeChatReply(result.text);
 
-        // 3. Session identifier scoped by platform and room for conversation persistence
-        const sessionId = `${ctx.platformName}:${ctx.roomId}`;
-
-        // 4. Save incoming user message (raw content)
+        // 3. Save incoming user message (raw content)
         await saveChatMessage({
             sessionId,
             role: "user",
