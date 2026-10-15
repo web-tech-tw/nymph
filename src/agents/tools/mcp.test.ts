@@ -171,5 +171,101 @@ disallowed_tools = ["tool_a"]
                 }
             }
         });
+
+        test("should normalize non-object tool execution output and protect toModelOutput", async () => {
+            const mockRawExecute = mock(() => Promise.resolve("raw string result"));
+            // Simulates upstream @ai-sdk/mcp's mcpToModelOutput which uses `in` operator
+            const mockToModelOutput = mock(({ output }: { output: unknown }) => {
+                if (output == null || typeof output !== "object" || !("content" in output)) {
+                    throw new TypeError("Cannot use 'in' operator to search for 'content' in primitive");
+                }
+                return { type: "content", value: (output as { content: unknown }).content };
+            });
+
+            mockTools.mockImplementationOnce(() =>
+                Promise.resolve({
+                    tool_primitive: {
+                        name: "tool_primitive",
+                        description: "Tool returning primitive",
+                        execute: mockRawExecute,
+                        toModelOutput: mockToModelOutput,
+                    },
+                } as unknown as ReturnType<typeof mockTools>),
+            );
+
+            const configs: McpServerConfig[] = [
+                {
+                    name: "test_mcp",
+                    enabled: true,
+                    transport: {
+                        type: "http",
+                        url: "http://localhost:3000",
+                    },
+                },
+            ];
+
+            const tools = await loadMcpTools(configs);
+            const wrappedTool = tools.test_mcp_tool_primitive as {
+                execute: (args: Record<string, unknown>, options?: { toolCallId?: string }) => Promise<unknown>;
+                toModelOutput: (options: { output: unknown }) => { type: string; value?: unknown };
+            };
+            expect(wrappedTool).toBeDefined();
+
+            // 1. execute should return a normalized MCP object, not a raw string
+            const execResult = (await wrappedTool.execute({}, { toolCallId: "call_abc123" })) as {
+                content: Array<{ text: string }>;
+            };
+            expect(typeof execResult).toBe("object");
+            expect(execResult).not.toBeNull();
+            expect("content" in execResult).toBe(true);
+            expect(Array.isArray(execResult.content)).toBe(true);
+            expect(execResult.content[0]?.text).toBe("raw string result");
+
+            // 2. toModelOutput with non-object should be shielded from TypeError
+            const modelOutput = wrappedTool.toModelOutput({ output: "primitive output" });
+            expect(modelOutput).toBeDefined();
+            expect(modelOutput.type).toBe("content");
+        });
+
+        test("should log error with tool name and toolCallId on execute failure", async () => {
+            const mockFailingExecute = mock(() => Promise.reject(new Error("tool execution exploded")));
+
+            mockTools.mockImplementationOnce(() =>
+                Promise.resolve({
+                    tool_fail: {
+                        name: "tool_fail",
+                        description: "Tool failing",
+                        execute: mockFailingExecute,
+                    },
+                } as unknown as ReturnType<typeof mockTools>),
+            );
+
+            const configs: McpServerConfig[] = [
+                {
+                    name: "test_mcp",
+                    enabled: true,
+                    transport: {
+                        type: "http",
+                        url: "http://localhost:3000",
+                    },
+                },
+            ];
+
+            const tools = await loadMcpTools(configs);
+            const wrappedTool = tools.test_mcp_tool_fail as {
+                execute: (args: Record<string, unknown>, options?: { toolCallId?: string }) => Promise<unknown>;
+            };
+
+            let caughtError: unknown;
+            try {
+                await wrappedTool.execute({}, { toolCallId: "call_fail_999" });
+            } catch (err) {
+                caughtError = err;
+            }
+
+            expect(caughtError).toBeDefined();
+            expect((caughtError as Error).message).toBe("tool execution exploded");
+        });
     });
 });
+
