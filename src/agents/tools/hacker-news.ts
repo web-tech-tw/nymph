@@ -3,6 +3,7 @@ import { z } from "zod";
 
 const FIREBASE_BASE = "https://hacker-news.firebaseio.com/v0";
 const ALGOLIA_SEARCH_URL = "https://hn.algolia.com/api/v1/search";
+const ALGOLIA_SEARCH_BY_DATE_URL = "https://hn.algolia.com/api/v1/search_by_date";
 
 const CATEGORY_ENDPOINTS = {
     top: "topstories",
@@ -15,11 +16,15 @@ const CATEGORY_ENDPOINTS = {
 
 export type HackerNewsCategory = keyof typeof CATEGORY_ENDPOINTS;
 
+export type HackerNewsSort = "relevance" | "date";
+
 export interface QueryHackerNewsParams {
     query?: string;
     category?: HackerNewsCategory;
     storyId?: number;
     limit?: number;
+    sort?: HackerNewsSort;
+    days?: number;
 }
 
 interface HnItem {
@@ -147,20 +152,37 @@ async function fetchStoryListings(
 async function searchStories(
     query: string,
     limit: number,
+    sort: HackerNewsSort = "relevance",
+    days?: number,
 ): Promise<string> {
     const trimmed = query.trim();
     if (!trimmed) {
         return "Error: Please provide search keywords.";
     }
 
-    const url = `${ALGOLIA_SEARCH_URL}?tags=story&hitsPerPage=${limit}&query=${encodeURIComponent(trimmed)}`;
+    const params = new URLSearchParams({
+        tags: "story",
+        hitsPerPage: String(limit),
+        query: trimmed,
+    });
+    if (days && days > 0) {
+        const minCreated = Math.floor(Date.now() / 1000) - days * 86_400;
+        params.set("numericFilters", `created_at_i>${minCreated}`);
+    }
+
+    const endpoint =
+        sort === "date" ? ALGOLIA_SEARCH_BY_DATE_URL : ALGOLIA_SEARCH_URL;
+    const url = `${endpoint}?${params.toString()}`;
     const data = await fetchJson<{ hits?: AlgoliaHit[] }>(url);
     const hits = data.hits || [];
 
     if (!hits.length) {
-        return `<hacker_news search="${escapeXml(trimmed)}" count="0" />`;
+        const daysAttr = days && days > 0 ? ` days="${days}"` : "";
+        return `<hacker_news search="${escapeXml(trimmed)}"${daysAttr} count="0" />`;
     }
 
+    const sortAttr = ` sort="${sort}"`;
+    const daysAttr = days && days > 0 ? ` days="${days}"` : "";
     const storyXml = hits
         .map((hit, index) => {
             const item: HnItem = {
@@ -177,7 +199,7 @@ async function searchStories(
         })
         .join("\n");
 
-    return `<hacker_news search="${escapeXml(trimmed)}" count="${hits.length}">\n${storyXml}\n</hacker_news>`;
+    return `<hacker_news search="${escapeXml(trimmed)}"${sortAttr}${daysAttr} count="${hits.length}">\n${storyXml}\n</hacker_news>`;
 }
 
 async function fetchStoryDetail(
@@ -226,6 +248,8 @@ export async function queryHackerNews({
     category = "top",
     storyId,
     limit,
+    sort,
+    days,
 }: QueryHackerNewsParams): Promise<string> {
     const maxLimit = clampLimit(limit);
 
@@ -237,7 +261,7 @@ export async function queryHackerNews({
             return "Error: Please provide search keywords.";
         }
         if (query) {
-            return await searchStories(query, maxLimit);
+            return await searchStories(query, maxLimit, sort, days);
         }
         return await fetchStoryListings(category, maxLimit);
     } catch (error) {
@@ -259,6 +283,22 @@ export function toolHackerNews(customFetcher?: HackerNewsFetcher) {
                 .optional()
                 .describe(
                     "Keyword to search Hacker News stories (e.g. 'rust compiler', 'webassembly'). Takes precedence over category.",
+                ),
+            sort: z
+                .enum(["relevance", "date"])
+                .optional()
+                .default("relevance")
+                .describe(
+                    "Search result ordering for keyword search: 'relevance' (best match, default) or 'date' (newest first). Use 'date' whenever the user asks for the latest, newest, or recent news on a topic.",
+                ),
+            days: z
+                .number()
+                .int()
+                .min(1)
+                .max(365)
+                .optional()
+                .describe(
+                    "Optional: only return keyword-search results from the last N days (e.g. 7 for the past week). Combine with sort='date' for recent news.",
                 ),
             category: z
                 .enum(["top", "new", "best", "ask", "show", "job"])
@@ -285,11 +325,11 @@ export function toolHackerNews(customFetcher?: HackerNewsFetcher) {
                     "Maximum number of stories (or comments when fetching a single story) to return (default: 10, max: 20).",
                 ),
         }),
-        execute: async ({ query, category, storyId, limit }) => {
+        execute: async ({ query, category, storyId, limit, sort, days }) => {
             if (customFetcher) {
-                return customFetcher({ query, category, storyId, limit });
+                return customFetcher({ query, category, storyId, limit, sort, days });
             }
-            return queryHackerNews({ query, category, storyId, limit });
+            return queryHackerNews({ query, category, storyId, limit, sort, days });
         },
     });
 }

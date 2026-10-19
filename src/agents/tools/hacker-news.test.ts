@@ -52,9 +52,10 @@ describe("hackerNews tool", () => {
             tool as unknown as {
                 execute: (args: unknown, options?: { toolCallId?: string }) => Promise<unknown>;
             }
-        ).execute({ query: "bun runtime", category: "new", storyId: undefined, limit: 5 }, {
-            toolCallId: "call-1",
-        });
+        ).execute(
+            { query: "bun runtime", category: "new", storyId: undefined, limit: 5, sort: "date", days: 7 },
+            { toolCallId: "call-1" },
+        );
 
         expect(result).toBe("custom result");
         expect(calls[0]).toEqual({
@@ -62,6 +63,8 @@ describe("hackerNews tool", () => {
             category: "new",
             storyId: undefined,
             limit: 5,
+            sort: "date",
+            days: 7,
         });
     });
 
@@ -122,7 +125,7 @@ describe("queryHackerNews search", () => {
             expect(url).toContain("https://hn.algolia.com/api/v1/search?");
             expect(url).toContain("tags=story");
             expect(url).toContain("hitsPerPage=3");
-            expect(decodeURIComponent(url)).toContain("query=rust compiler");
+            expect(url).toContain("query=rust+compiler");
             return {
                 hits: [
                     {
@@ -140,10 +143,49 @@ describe("queryHackerNews search", () => {
 
         const result = await queryHackerNews({ query: "rust compiler", limit: 3 });
 
-        expect(result).toContain("<hacker_news search=\"rust compiler\" count=\"1\">");
+        expect(result).toContain("<hacker_news search=\"rust compiler\" sort=\"relevance\" count=\"1\">");
         expect(result).toContain("<title>Rust &lt;compiler&gt; rewrite</title>");
         expect(result).toContain("score=\"500\" comments=\"12\"");
         expect(result).toContain("author=\"bob\"");
+    });
+
+    it("searches newest-first via the Algolia search_by_date endpoint", async () => {
+        mockFetch((url) => {
+            expect(url).toContain("https://hn.algolia.com/api/v1/search_by_date?");
+            expect(url).toContain("tags=story");
+            expect(decodeURIComponent(url)).toContain("query=llm");
+            return {
+                hits: [
+                    {
+                        objectID: "12",
+                        title: "Fresh LLM news",
+                        url: "https://example.com/fresh",
+                        author: "carol",
+                        points: 42,
+                        num_comments: 3,
+                        created_at_i: 1760000000,
+                    },
+                ],
+            };
+        });
+
+        const result = await queryHackerNews({ query: "llm", sort: "date", limit: 5 });
+
+        expect(result).toContain("<hacker_news search=\"llm\" sort=\"date\" count=\"1\">");
+        expect(result).toContain("<title>Fresh LLM news</title>");
+    });
+
+    it("filters keyword search to the last N days", async () => {
+        mockFetch((url) => {
+            expect(url).toContain("https://hn.algolia.com/api/v1/search?");
+            expect(url).toContain("numericFilters=");
+            expect(url).toMatch(/created_at_i%3E\d+/);
+            return { hits: [] };
+        });
+
+        const result = await queryHackerNews({ query: "llm", days: 7, limit: 5 });
+
+        expect(result).toContain("<hacker_news search=\"llm\" days=\"7\" count=\"0\" />");
     });
 
     it("returns an empty result when there are no hits", async () => {

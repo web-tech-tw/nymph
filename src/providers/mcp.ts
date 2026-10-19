@@ -270,6 +270,21 @@ export class McpProvider implements BasePlatformProvider {
                         .describe(
                             "Keyword to search Hacker News stories (e.g. 'rust compiler', 'webassembly'). Takes precedence over category.",
                         ),
+                    sort: z
+                        .enum(["relevance", "date"])
+                        .optional()
+                        .describe(
+                            "Search result ordering for keyword search: 'relevance' (best match, default) or 'date' (newest first). Use 'date' whenever the user asks for the latest, newest, or recent news on a topic.",
+                        ),
+                    days: z
+                        .number()
+                        .int()
+                        .min(1)
+                        .max(365)
+                        .optional()
+                        .describe(
+                            "Optional: only return keyword-search results from the last N days (e.g. 7 for the past week). Combine with sort='date' for recent news.",
+                        ),
                     category: z
                         .enum(["top", "new", "best", "ask", "show", "job"])
                         .optional()
@@ -294,13 +309,15 @@ export class McpProvider implements BasePlatformProvider {
                         ),
                 },
             },
-            async ({ query, category, storyId, limit }) => {
+            async ({ query, category, storyId, limit, sort, days }) => {
                 try {
                     const result = await queryHackerNews({
                         query,
                         category,
                         storyId,
                         limit,
+                        sort,
+                        days,
                     });
 
                     return {
