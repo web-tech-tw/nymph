@@ -69,6 +69,7 @@ Once connected, your AI assistant can directly invoke the following Nymph capabi
 
 * `consult_nymph_wisdom`: Start an in-depth technical consultation, architecture analysis, or debugging diagnosis with Nymph.
 * `absorb_nymph_wisdom`: Search and absorb the community's accumulated engineering knowledge base, architecture decisions, and solutions.
+* `fetch_hacker_news`: Fetch Hacker News stories — top/new/best listings, keyword search, or a single story with comments.
 * `my_nymph_impression`: Retrieve the profile of this MCP connection token holder.
 
 ---

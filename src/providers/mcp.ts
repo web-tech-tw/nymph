@@ -11,6 +11,7 @@ import type {
 import type { McpProviderParams } from "../types/mcp";
 import { server as defaultServer, type HttpServer } from "../routes";
 import { queryKnowledgeDocuments } from "../agents/tools/knowledge-docs";
+import { queryHackerNews } from "../agents/tools/hacker-news";
 import { findAndTouchMcpToken } from "../databases/models/mcp-token";
 import { getUserProfile, type IUserProfile } from "../databases/models/user-profile";
 import { flattenArxivReply } from "../utils/arxiv";
@@ -255,7 +256,95 @@ export class McpProvider implements BasePlatformProvider {
             },
         );
 
-        // 3. my_nymph_impression: Get Nymph's impression and profile of the current token holder
+        // 3. fetch_hacker_news: Fetch Hacker News stories, search, or story detail
+        server.registerTool(
+            "fetch_hacker_news",
+            {
+                title: "Fetch Hacker News",
+                description:
+                    "Fetch Hacker News stories: list top/new/best/ask/show/job stories, search stories by keyword, or get a single story with its comments by ID.",
+                inputSchema: {
+                    query: z
+                        .string()
+                        .optional()
+                        .describe(
+                            "Keyword to search Hacker News stories (e.g. 'rust compiler', 'webassembly'). Takes precedence over category.",
+                        ),
+                    sort: z
+                        .enum(["relevance", "date"])
+                        .optional()
+                        .describe(
+                            "Search result ordering for keyword search: 'relevance' (best match, default) or 'date' (newest first). Use 'date' whenever the user asks for the latest, newest, or recent news on a topic.",
+                        ),
+                    days: z
+                        .number()
+                        .int()
+                        .min(1)
+                        .max(365)
+                        .optional()
+                        .describe(
+                            "Optional: only return keyword-search results from the last N days (e.g. 7 for the past week). Combine with sort='date' for recent news.",
+                        ),
+                    category: z
+                        .enum(["top", "new", "best", "ask", "show", "job"])
+                        .optional()
+                        .describe(
+                            "Story listing category: 'top' (front page), 'new' (newest), 'best' (all-time best), 'ask' (Ask HN), 'show' (Show HN), 'job' (jobs). Default: 'top'.",
+                        ),
+                    storyId: z
+                        .number()
+                        .int()
+                        .optional()
+                        .describe(
+                            "Fetch a single Hacker News story with its top-level comments by item ID (takes precedence over query and category).",
+                        ),
+                    limit: z
+                        .number()
+                        .int()
+                        .min(1)
+                        .max(20)
+                        .optional()
+                        .describe(
+                            "Maximum number of stories (or comments when fetching a single story) to return (default: 10, max: 20).",
+                        ),
+                },
+            },
+            async ({ query, category, storyId, limit, sort, days }) => {
+                try {
+                    const result = await queryHackerNews({
+                        query,
+                        category,
+                        storyId,
+                        limit,
+                        sort,
+                        days,
+                    });
+
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: result,
+                            },
+                        ],
+                    };
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : String(error);
+                    console.error("[McpProvider] fetch_hacker_news error:", error);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Error fetching Hacker News: ${msg}`,
+                            },
+                        ],
+                        isError: true,
+                    };
+                }
+            },
+        );
+
+        // 4. my_nymph_impression: Get Nymph's impression and profile of the current token holder
         server.registerTool(
             "my_nymph_impression",
             {

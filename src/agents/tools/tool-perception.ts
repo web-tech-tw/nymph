@@ -139,6 +139,7 @@ export function toolDiscoverTools(getTools: () => ToolSet | Record<string, unkno
                     const isBuiltin =
                         name === "currentDateTime" ||
                         name === "knowledgeDocs" ||
+                        name === "hackerNews" ||
                         name === "searchChatHistory" ||
                         name === "search_chat_history" ||
                         name === "discover_tools" ||
@@ -260,6 +261,7 @@ export function toolGetToolInfo(getTools: () => ToolSet | Record<string, unknown
                 const isBuiltin =
                     name === "currentDateTime" ||
                     name === "knowledgeDocs" ||
+                    name === "hackerNews" ||
                     name === "searchChatHistory" ||
                     name === "search_chat_history" ||
                     name === "discover_tools" ||
