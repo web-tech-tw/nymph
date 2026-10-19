@@ -96,7 +96,7 @@ describe("McpProvider", () => {
         expect(json.result.serverInfo.name).toBe("nymph");
     });
 
-    it("should list consult_nymph_wisdom, absorb_nymph_wisdom, and my_nymph_impression tools", async () => {
+    it("should list consult_nymph_wisdom, absorb_nymph_wisdom, fetch_hacker_news, and my_nymph_impression tools", async () => {
         const res = await testServer.handle(
             new Request("http://localhost/mcp", {
                 method: "POST",
@@ -120,6 +120,7 @@ describe("McpProvider", () => {
         const toolNames = json.result.tools.map((t: { name: string }) => t.name);
         expect(toolNames).toContain("consult_nymph_wisdom");
         expect(toolNames).toContain("absorb_nymph_wisdom");
+        expect(toolNames).toContain("fetch_hacker_news");
         expect(toolNames).toContain("my_nymph_impression");
     });
 
@@ -215,6 +216,68 @@ describe("McpProvider", () => {
             expect(json.result.content[0].text).toContain("Database connection is not ready");
         } finally {
             dbSpy.mockRestore();
+        }
+    });
+
+    it("should call fetch_hacker_news and return top stories", async () => {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = (async (input: string | URL | Request) => {
+            const url = String(input);
+            if (url === "https://hacker-news.firebaseio.com/v0/topstories.json") {
+                return new Response(JSON.stringify([1]), {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                });
+            }
+            if (url === "https://hacker-news.firebaseio.com/v0/item/1.json") {
+                return new Response(
+                    JSON.stringify({
+                        id: 1,
+                        type: "story",
+                        title: "Bun hits 2.0",
+                        url: "https://bun.sh/blog/bun2",
+                        score: 900,
+                        by: "alice",
+                        time: 1700000000,
+                        descendants: 128,
+                    }),
+                    { status: 200, headers: { "content-type": "application/json" } },
+                );
+            }
+            throw new Error(`Unexpected fetch: ${url}`);
+        }) as unknown as typeof fetch;
+
+        try {
+            const res = await testServer.handle(
+                new Request("http://localhost/mcp", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json, text/event-stream",
+                        Authorization: `Bearer ${testToken}`,
+                    },
+                    body: JSON.stringify({
+                        jsonrpc: "2.0",
+                        id: 7,
+                        method: "tools/call",
+                        params: {
+                            name: "fetch_hacker_news",
+                            arguments: {
+                                category: "top",
+                                limit: 1,
+                            },
+                        },
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const json = JSON.parse(await res.text());
+            expect(json.result.isError).toBeUndefined();
+            expect(json.result.content[0].text).toContain("<hacker_news category=\"top\" count=\"1\">");
+            expect(json.result.content[0].text).toContain("<title>Bun hits 2.0</title>");
+        } finally {
+            globalThis.fetch = originalFetch;
         }
     });
 
