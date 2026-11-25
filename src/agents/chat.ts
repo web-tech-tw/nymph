@@ -126,20 +126,7 @@ function extractText(aiMsg: AIMessage | undefined): string {
     return String(aiMsg);
 }
 
-export function sliceContent(content: string, maxLength: number, separator = "\n"): string[] {
-    const parts = content.split(separator);
-    const snippets: string[] = [];
-    let buffer = "";
-
-    for (const part of parts) {
-        if (!part) { buffer += separator; continue; }
-        if (buffer.length + part.length < maxLength) { buffer += part; continue; }
-        if (buffer.trim()) snippets.push(buffer.trim());
-        buffer = part;
-    }
-    if (buffer.trim()) snippets.push(buffer.trim());
-    return snippets;
-}
+export { sliceContent } from "./slice.ts";
 
 export async function translateText(chatId: string, content: string, langs?: string[]): Promise<string> {
     const [langA, langB] = langs?.length === 2 ? langs : ["en", "zh"];

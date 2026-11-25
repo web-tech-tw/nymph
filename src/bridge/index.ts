@@ -52,19 +52,19 @@ export function relayText(platform: Platform, roomId: string, text: string, send
     broadcast(platform, recipients, prefixed, false);
 }
 
-export function sendText(platform: Platform, roomId: string, text: string, included = false): void {
+export async function sendText(platform: Platform, roomId: string, text: string, included = false): Promise<void> {
     const recipients = findRelay(platform, roomId);
     if (recipients) {
-        broadcast(platform, recipients, text, included);
+        await broadcast(platform, recipients, text, included);
     } else {
-        getSender(platform)(roomId, text);
+        await getSender(platform)(roomId, text);
     }
 }
 
-function broadcast(originPlatform: Platform, recipients: RelayEntry, text: string, included: boolean): void {
+async function broadcast(originPlatform: Platform, recipients: RelayEntry, text: string, included: boolean): Promise<void> {
     for (const [targetPlatform, targetRoomId] of Object.entries(recipients)) {
         if (!included && targetPlatform === originPlatform) continue;
         if (!targetRoomId) continue;
-        getSender(targetPlatform as Platform)(targetRoomId, text);
+        await getSender(targetPlatform as Platform)(targetRoomId, text);
     }
 }

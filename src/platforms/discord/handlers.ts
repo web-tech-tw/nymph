@@ -9,12 +9,12 @@ import { chatWithAI, sliceContent, translateText } from "../../agents/chat.ts";
 import { Room } from "../../database/models/room.ts";
 import type { PlatformAdapter } from "../types.ts";
 
-function say(message: Message, text: string): void {
+async function say(message: Message, text: string): Promise<void> {
     const roomId = message.channel.id;
     if (hasRelay(Platform.Discord, roomId)) {
-        sendText(Platform.Discord, roomId, text);
+        await sendText(Platform.Discord, roomId, text);
     } else {
-        message.reply(text);
+        await message.reply(text);
     }
 }
 
@@ -58,15 +58,17 @@ async function onInteractionCreate(interaction: Interaction): Promise<void> {
 }
 
 async function processChat(message: Message, content: string): Promise<void> {
-    if (!content) { say(message, "所收到的訊息意圖不明。"); return; }
+    if (!content) { await say(message, "所收到的訊息意圖不明。"); return; }
     if (message.channel.isSendable()) await message.channel.sendTyping();
     try {
         const response = await chatWithAI(message.channel.id, content);
-        if (!response?.trim()) { say(message, "無法正常回覆，請換個說法試試。"); return; }
-        sliceContent(response.trim(), 2000).forEach((s) => say(message, s));
+        if (!response?.trim()) { await say(message, "無法正常回覆，請換個說法試試。"); return; }
+        for (const snippet of sliceContent(response.trim(), 2000)) {
+            await say(message, snippet);
+        }
     } catch (err) {
         console.error("Chat Error:", err);
-        say(message, "思緒混亂，無法回覆。");
+        await say(message, "思緒混亂，無法回覆。");
     }
 }
 
