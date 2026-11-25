@@ -23,32 +23,102 @@ export async function* readLines(path: string): AsyncGenerator<string> {
     }
 }
 
-export function sliceContent(content: string, limit = 2000): string[] {
-    if (!content) return [];
-    if (content.length <= limit) return [content];
+interface FenceState {
+    marker: string;
+    header: string;
+}
 
-    const chunks: string[] = [];
-    let remaining = content;
-
-    while (remaining.length > 0) {
-        if (remaining.length <= limit) {
-            chunks.push(remaining);
-            break;
+function updateFenceState(line: string, current: FenceState | null): FenceState | null {
+    const trimmed = line.trim();
+    if (!current) {
+        const openMatch = /^(`{3,})([^`]*)$/.exec(trimmed);
+        if (openMatch) {
+            return { marker: openMatch[1], header: trimmed };
         }
-
-        let sliceIndex = remaining.lastIndexOf("\n", limit);
-        if (sliceIndex === -1 || sliceIndex === 0) {
-            sliceIndex = remaining.lastIndexOf(" ", limit);
-        }
-        if (sliceIndex === -1 || sliceIndex === 0) {
-            sliceIndex = limit;
-        }
-
-        chunks.push(remaining.slice(0, sliceIndex).trim());
-        remaining = remaining.slice(sliceIndex).trim();
+        return null;
     }
 
-    return chunks.filter((c) => c.length > 0);
+    const closeMatch = /^(`{3,})$/.exec(trimmed);
+    if (closeMatch && closeMatch[1].length >= current.marker.length) {
+        return null;
+    }
+    return current;
+}
+
+function flushSliceBuffer(
+    buffer: string,
+    openFence: FenceState | null,
+    chunks: string[],
+): void {
+    const text = openFence ? `${buffer}\n${openFence.marker}` : buffer;
+    if (text.trim()) {
+        chunks.push(text.trim());
+    }
+}
+
+export function sliceContent(content: string, limit = 2000): string[] {
+    if (!content.trim()) return [];
+    if (limit <= 0 || content.length <= limit) return [content];
+
+    const lines = content.split("\n");
+    const chunks: string[] = [];
+    let buffer = "";
+    let openFence: FenceState | null = null;
+
+    for (const line of lines) {
+        const nextFence: FenceState | null = updateFenceState(line, openFence);
+        const nextReserve = nextFence ? 1 + nextFence.marker.length : 0;
+
+        if (buffer.length > 0) {
+            const candidate = `${buffer}\n${line}`;
+            if (candidate.length + nextReserve <= limit) {
+                buffer = candidate;
+                openFence = nextFence;
+                continue;
+            }
+
+            flushSliceBuffer(buffer, openFence, chunks);
+            buffer = openFence ? `${openFence.header}\n` : "";
+        }
+
+        if (buffer.length + line.length + nextReserve <= limit) {
+            buffer += line;
+            openFence = nextFence;
+            continue;
+        }
+
+        let remaining = line;
+        while (remaining.length > 0) {
+            const currentReserve = openFence ? 1 + openFence.marker.length : 0;
+            const avail = Math.max(1, limit - buffer.length - currentReserve);
+
+            if (remaining.length <= avail) {
+                buffer += remaining;
+                remaining = "";
+                break;
+            }
+
+            let cut = avail;
+            const spaceIdx = remaining.lastIndexOf(" ", avail);
+            if (spaceIdx > Math.floor(avail * 0.5)) {
+                cut = spaceIdx + 1;
+            }
+
+            buffer += remaining.slice(0, cut).trimEnd();
+            remaining = remaining.slice(cut).trimStart();
+
+            flushSliceBuffer(buffer, openFence, chunks);
+            buffer = openFence ? `${openFence.header}\n` : "";
+        }
+
+        openFence = nextFence;
+    }
+
+    if (buffer.trim()) {
+        chunks.push(buffer.trim());
+    }
+
+    return chunks;
 }
 
 /**

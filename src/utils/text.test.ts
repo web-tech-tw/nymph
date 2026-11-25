@@ -43,6 +43,30 @@ describe("Text Utilities", () => {
         test("returns single item if within limit", () => {
             expect(sliceContent("hello world", 100)).toEqual(["hello world"]);
         });
+
+        test("closes and reopens Markdown fenced code blocks across chunks", () => {
+            const input = [
+                "說明文字",
+                "```python",
+                "line_1 = 'alpha'",
+                "line_2 = 'bravo'",
+                "line_3 = 'charlie'",
+                "line_4 = 'delta'",
+                "```",
+                "結尾文字",
+            ].join("\n");
+
+            const chunks = sliceContent(input, 55);
+            expect(chunks.length).toBeGreaterThanOrEqual(2);
+            for (const chunk of chunks) {
+                expect(chunk.length).toBeLessThanOrEqual(55);
+                const fences = chunk.match(/^```/gm) ?? [];
+                expect(fences.length % 2).toBe(0);
+            }
+            expect(chunks[0]).toContain("```python");
+            expect(chunks[1].startsWith("```python\n")).toBe(true);
+            expect(chunks.at(-1)?.endsWith("結尾文字")).toBe(true);
+        });
     });
 
     describe("sanitizeChatReply", () => {
