@@ -46,11 +46,12 @@ describe("DiscordProvider helpers", () => {
         expect(sendTyping.mock.calls.length).toBe(countAfterThrow);
     });
 
-    test("parseSlashCommand should recognize built-in commands only", () => {
-        expect(parseSlashCommand("/reset")).toEqual({ command: "reset", args: [] });
-        expect(parseSlashCommand("  /STATUS  ")).toEqual({ command: "status", args: [] });
+    test("parseSlashCommand should only recognize /help and ignore /reset or /status", () => {
         expect(parseSlashCommand("/help topic")).toEqual({ command: "help", args: ["topic"] });
+        expect(parseSlashCommand("  /HELP  ")).toEqual({ command: "help", args: [] });
+        expect(parseSlashCommand("/reset")).toBeNull();
+        expect(parseSlashCommand("/status")).toBeNull();
         expect(parseSlashCommand("/unknown")).toBeNull();
-        expect(parseSlashCommand("hello /reset")).toBeNull();
+        expect(parseSlashCommand("hello /help")).toBeNull();
     });
 });

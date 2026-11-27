@@ -12,9 +12,9 @@ describe("LineProvider", () => {
             matched: true,
             content: "幫我看一下",
         });
-        expect(stripLineGroupMention("/reset")).toEqual({
+        expect(stripLineGroupMention("/help")).toEqual({
             matched: true,
-            content: "/reset",
+            content: "/help",
         });
         expect(stripLineGroupMention("大家今天吃什麼")).toEqual({
             matched: false,
@@ -81,7 +81,7 @@ describe("LineProvider", () => {
         let receivedCmd = "";
         provider.onCommand(async (cmd, _args, ctx) => {
             receivedCmd = cmd;
-            await ctx.reply("reset ok");
+            await ctx.reply("help ok");
         });
 
         const payload = JSON.stringify({
@@ -91,13 +91,13 @@ describe("LineProvider", () => {
                     webhookEventId: "evt-cmd-1",
                     replyToken: "reply-token-cmd",
                     source: { type: "user", userId: "U999" },
-                    message: { type: "text", id: "m2", text: "/reset" },
+                    message: { type: "text", id: "m2", text: "/help" },
                 },
             ],
         });
 
         await provider.handleWebhookPayload(payload, null, { awaitCompletion: true });
-        expect(receivedCmd).toBe("reset");
+        expect(receivedCmd).toBe("help");
         expect(replyMessageMock).toHaveBeenCalledTimes(1);
     });
 
