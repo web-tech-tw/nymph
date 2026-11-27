@@ -27,10 +27,14 @@ function createMockClient() {
 }
 
 describe("LineProvider", () => {
-    test("stripLineGroupMention matches mention prefixes and slash commands", () => {
+    test("stripLineGroupMention matches mention prefixes and supported commands only", () => {
         expect(stripLineGroupMention("@Nymph hello")).toEqual({ matched: true, content: "hello" });
         expect(stripLineGroupMention("寧芙，你好")).toEqual({ matched: true, content: "你好" });
         expect(stripLineGroupMention("/help")).toEqual({ matched: true, content: "/help" });
+        expect(stripLineGroupMention("/etc/nginx/nginx.conf")).toEqual({
+            matched: false,
+            content: "/etc/nginx/nginx.conf",
+        });
         expect(stripLineGroupMention("unrelated chat")).toEqual({ matched: false, content: "unrelated chat" });
     });
 

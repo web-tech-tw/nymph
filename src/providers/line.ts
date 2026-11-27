@@ -9,7 +9,7 @@ import type {
 } from "../types/provider";
 import type { LineProviderParams, WebhookResult } from "../types/line";
 import { server as defaultServer, type HttpServer } from "../routes";
-import { sliceContent } from "../utils/text";
+import { sliceContent, parseSlashCommand } from "../utils/text";
 import { extractSourceId } from "../utils/line";
 import { saveReceivedImage } from "../utils/media";
 import { parseArxivReplyCard, flattenArxivReply } from "../utils/arxiv";
@@ -19,7 +19,6 @@ import {
     buildHelpFlexMessage,
     buildLineQuickReply,
 } from "../utils/line-flex";
-import { parseSlashCommand } from "./discord";
 
 const MAX_SEEN_EVENT_IDS = 1000;
 const PROFILE_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -36,7 +35,7 @@ interface CachedProfile {
 
 export function stripLineGroupMention(text: string): { matched: boolean; content: string } {
     const trimmed = text.trim();
-    if (trimmed.startsWith("/")) {
+    if (parseSlashCommand(trimmed)) {
         return { matched: true, content: trimmed };
     }
     if (LINE_MENTION_PREFIX_REGEX.test(trimmed)) {

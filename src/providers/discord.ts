@@ -17,11 +17,13 @@ import type {
 } from "../types/provider";
 import type { DiscordProviderParams } from "../types/discord";
 
-import { sliceContent } from "../utils/text";
+import { sliceContent, parseSlashCommand } from "../utils/text";
 import { saveReceivedImage } from "../utils/media";
 import { formatReplyBreadcrumb } from "../utils/prompts";
 import { extractArxivUrls, parseArxivReplyCard, type ArxivReplyCard } from "../utils/arxiv";
 import { convertMarkdownTablesToDiscordLists } from "../utils/markdown-table-ast";
+
+export { parseSlashCommand };
 
 const TYPING_REFRESH_INTERVAL_MS = 8_000;
 
@@ -55,20 +57,6 @@ export async function withTypingIndicator<T>(
     } finally {
         clearInterval(timer);
     }
-}
-
-/**
- * Parses a slash-like command string (e.g. "/help").
- */
-export function parseSlashCommand(text: string): { command: string; args: string[] } | null {
-    const trimmed = text.trim();
-    if (!trimmed.startsWith("/")) return null;
-    const parts = trimmed.slice(1).split(/\s+/).filter(Boolean);
-    const first = parts[0];
-    if (!first) return null;
-    const command = first.toLowerCase();
-    if (command !== "help") return null;
-    return { command, args: parts.slice(1) };
 }
 
 export class DiscordProvider implements BasePlatformProvider {

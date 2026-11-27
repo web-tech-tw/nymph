@@ -61,7 +61,10 @@ export async function getHistoryMessages(sessionId: string, limit = 20): Promise
     }
 
     try {
-        const docs = await ChatMessageModel.find({ sessionId })
+        const docs = await ChatMessageModel.find({
+            sessionId,
+            role: { $in: ["user", "assistant"] },
+        })
             .sort({ createdAt: -1 })
             .limit(limit)
             .lean();
@@ -166,6 +169,8 @@ export async function searchChatHistoryMessages(
         const roleLower = (role || "all").trim().toLowerCase();
         if (roleLower === "user" || roleLower === "assistant") {
             filter.role = roleLower;
+        } else {
+            filter.role = { $in: ["user", "assistant"] };
         }
 
         const queryTrimmed = query.trim();

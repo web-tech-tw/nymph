@@ -248,3 +248,17 @@ export function truncateToolResult(result: unknown, maxTokens = 4000): unknown {
     return normalizeAndTruncateMcpResult(result, maxTokens);
 }
 
+/**
+ * Parses supported slash commands (currently "/help").
+ */
+export function parseSlashCommand(text: string): { command: string; args: string[] } | null {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("/")) return null;
+    const parts = trimmed.slice(1).split(/\s+/).filter(Boolean);
+    const first = parts[0];
+    if (!first) return null;
+    const command = first.toLowerCase();
+    if (command !== "help") return null;
+    return { command, args: parts.slice(1) };
+}
+
