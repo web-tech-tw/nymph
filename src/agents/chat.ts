@@ -1,11 +1,12 @@
 import { ToolLoopAgent, APICallError, stepCountIs, type ModelMessage } from "ai";
 import type { ChatAgentParams, ChatAgent, ReplyMessageOptions } from "../types/agent";
-import { PlatformName, type ChatContext } from "../types/provider";
+import { PlatformName, type ChatContext, type ReplyMetadata } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
 import { formatUserProfileContext, formatReplyToTag } from "../utils/prompts";
 import { readReceivedImage } from "../utils/media";
 import { extractArxivUrls, formatArxivPaperTag, sanitizeArxivPaperTags } from "../utils/arxiv";
 import { sanitizeChatReply, estimateTokens } from "../utils/text";
+import { extractQuickRepliesTag } from "../utils/line-flex";
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getActiveToolRegistry } from "./tools";
@@ -33,6 +34,7 @@ export function getPlatformFormattingInstructions(platformName?: PlatformName): 
             "- 一般交談與說明請使用純文字與自然換行排版（可用「• 」或數字列點），不要使用 **粗體**、# 標題或 | Markdown 表格語法。",
             "- 僅在提供程式碼片段時使用 ```語言 ... ``` 程式碼區塊。",
             "- 回覆保持精簡聚焦，避免過長篇幅。",
+            "- 非 arxiv_reply 卡片回覆時，可在回覆最末端選填附上一行 <quick_replies>簡短追問1|簡短追問2</quick_replies>（最多 2 個、每個 12 字以內，作為使用者下一步按鈕；不需要時可省略）。",
             "</platform_formatting>",
         ].join("\n");
 
@@ -247,6 +249,7 @@ export class Chat implements ChatAgent {
     private baseInstructions: string;
     private currentSoftDeadline: number | undefined;
     private convergenceTriggered = false;
+    public lastTurnMetadata: ReplyMetadata = {};
 
     constructor(params: ChatAgentParams) {
         const contextLimit = Number(Bun.env.MODEL_CONTEXT_LIMIT) || 131_072;
@@ -269,12 +272,13 @@ export class Chat implements ChatAgent {
                     if (!this.convergenceTriggered) {
                         this.convergenceTriggered = true;
                         console.warn(
-                            `[Chat] Soft deadline reached at step ${stepNumber}; disabling tools to force convergence`,
+                            `[Chat] Soft deadline reached at step ${stepNumber}; setting toolChoice='none' to force convergence`,
                         );
                     }
+                    // Keep tools defined (omit activeTools: []) so strict providers like Mistral
+                    // do not reject requests whose history already contains tool_calls/tool messages.
                     return {
                         messages: prunedMessages,
-                        activeTools: [],
                         toolChoice: "none",
                         instructions: `${this.baseInstructions}${CONVERGENCE_SYSTEM_NOTICE}`,
                     };
@@ -358,13 +362,16 @@ export class Chat implements ChatAgent {
 
         this.currentSoftDeadline = softDeadlineMs ? Date.now() + softDeadlineMs : undefined;
         this.convergenceTriggered = false;
+        this.lastTurnMetadata = {};
 
         let result;
+        let didConverge = false;
         try {
             result = await this.agent.generate({
                 messages,
                 ...(hardDeadlineMs ? { abortSignal: AbortSignal.timeout(hardDeadlineMs) } : {}),
             });
+            didConverge = this.convergenceTriggered;
         } finally {
             this.currentSoftDeadline = undefined;
             this.convergenceTriggered = false;
@@ -393,8 +400,13 @@ export class Chat implements ChatAgent {
             }
         }
 
-        // 2. Extract final assistant text reply (using result.text to exclude reasoning parts, and sanitize chat markup)
-        const reply = sanitizeChatReply(result.text);
+        // 2. Extract final assistant text reply, strip <quick_replies> tags, and sanitize chat markup
+        const { cleanText, quickReplies } = extractQuickRepliesTag(result.text);
+        const reply = sanitizeChatReply(cleanText);
+        this.lastTurnMetadata = {
+            converged: didConverge || undefined,
+            quickReplies: quickReplies.length > 0 ? quickReplies : undefined,
+        };
 
         const stateless = Boolean(options?.stateless ?? ctx.stateless);
         if (!stateless) {
@@ -490,6 +502,23 @@ export interface CreateChatAgentOptions {
     sessionId?: string;
     platformName?: PlatformName;
     maxSteps?: number;
+    hasImages?: boolean;
+}
+
+/**
+ * Resolves the model ID to use for the turn.
+ * Uses OPENAI_VISION_MODEL when the turn includes images and a dedicated vision model is configured.
+ */
+export function resolveChatModelName(options?: {
+    hasImages?: boolean;
+    defaultModel?: string;
+    visionModel?: string;
+}): string {
+    const visionModel = (options?.visionModel ?? Bun.env.OPENAI_VISION_MODEL ?? "").trim();
+    if (options?.hasImages && visionModel) {
+        return visionModel;
+    }
+    return (options?.defaultModel ?? Bun.env.OPENAI_MODEL ?? "").trim();
 }
 
 /**
@@ -505,9 +534,10 @@ export async function createChatAgent(options?: CreateChatAgentOptions): Promise
     const tools = getActiveToolRegistry(options?.sessionId);
 
     const reasoningEffort = Bun.env.OPENAI_REASONING_EFFORT?.trim();
+    const modelName = resolveChatModelName({ hasImages: options?.hasImages });
 
     return new Chat({
-        model: provider(Bun.env.OPENAI_MODEL || ""),
+        model: provider(modelName),
         instructions,
         toolSet: tools,
         maxSteps: options?.maxSteps,

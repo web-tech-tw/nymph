@@ -11,6 +11,7 @@ import {
     pruneMessagesForBudget,
     handleChatError,
     getPlatformFormattingInstructions,
+    resolveChatModelName,
 } from "./chat";
 
 describe("createChatAgent", () => {
@@ -270,6 +271,36 @@ describe("pruneMessagesForBudget & estimateMessageTokens", () => {
             const discordInst = getPlatformFormattingInstructions(PlatformName.Discord);
             expect(discordInst).toContain("platform=\"Discord\"");
             expect(discordInst).toContain("嚴禁使用 Markdown 表格");
+        });
+    });
+
+    describe("resolveChatModelName", () => {
+        it("should route image turns to visionModel when configured", () => {
+            expect(
+                resolveChatModelName({
+                    hasImages: true,
+                    defaultModel: "zai-glm-5-3-flash",
+                    visionModel: "mistral-small-2603",
+                }),
+            ).toBe("mistral-small-2603");
+        });
+
+        it("should fall back to defaultModel when no images or no visionModel configured", () => {
+            expect(
+                resolveChatModelName({
+                    hasImages: false,
+                    defaultModel: "zai-glm-5-3-flash",
+                    visionModel: "mistral-small-2603",
+                }),
+            ).toBe("zai-glm-5-3-flash");
+
+            expect(
+                resolveChatModelName({
+                    hasImages: true,
+                    defaultModel: "zai-glm-5-3-flash",
+                    visionModel: "",
+                }),
+            ).toBe("zai-glm-5-3-flash");
         });
     });
 });

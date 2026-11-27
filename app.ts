@@ -51,26 +51,32 @@ provider.onMessage(async (ctx: ChatContext) => {
     const sessionId = `${ctx.platformName}:${ctx.roomId}`;
 
     const runTurn = async () => {
+        const hasImages = ctx.type === "image" || Boolean(ctx.images?.length);
         try {
             const agent = await createChatAgent({
                 sessionId,
                 platformName: ctx.platformName,
+                hasImages,
             });
             const reply = await agent.replyMessage(ctx);
             if (reply) {
-                await ctx.reply(reply);
+                await ctx.reply(reply, agent.lastTurnMetadata);
             }
         } catch (err: unknown) {
             console.error("[Chat] Error processing message:", err);
+            let retryMetadata;
             const replyText = await handleChatError(err, ctx, async (opts) => {
                 const agent = await createChatAgent({
                     sessionId,
                     platformName: ctx.platformName,
+                    hasImages,
                 });
-                return await agent.replyMessage(ctx, opts);
+                const res = await agent.replyMessage(ctx, opts);
+                retryMetadata = agent.lastTurnMetadata;
+                return res;
             });
             if (replyText) {
-                await ctx.reply(replyText).catch((sendErr) => {
+                await ctx.reply(replyText, retryMetadata).catch((sendErr) => {
                     console.error("[Chat] Failed to send error reply:", sendErr);
                 });
             }
@@ -106,31 +112,56 @@ provider.onCommand(async (command, _args, ctx) => {
 
     case "status": {
         const model = Bun.env.OPENAI_MODEL || "(未設定)";
-        const dbStatus = isDatabaseConnected() ? "已連線" : "未連線";
+        const visionModel = Bun.env.OPENAI_VISION_MODEL?.trim() || undefined;
+        const dbConnected = isDatabaseConnected();
+        const dbStatus = dbConnected ? "已連線" : "未連線";
         const toolCount = Object.keys(getActiveToolRegistry()).length;
         const mcpStatuses = getMcpServerStatuses();
         const mcpSummary = mcpStatuses.length > 0
             ? mcpStatuses.map((s) => `${s.name}: ${s.connected ? `已連線 (${s.toolCount} 工具)` : "離線"}`).join("、")
             : "無";
-        await ctx.reply([
-            "Nymph 系統狀態",
-            `• 模型：${model}`,
-            `• 資料庫：${dbStatus}`,
-            `• 可用工具數：${toolCount}`,
-            `• 外部 MCP：${mcpSummary}`,
-        ].join("\n"));
+        await ctx.reply(
+            [
+                "Nymph 系統狀態",
+                `• 模型：${model}`,
+                ...(visionModel ? [`• 視覺模型：${visionModel}`] : []),
+                `• 資料庫：${dbStatus}`,
+                `• 可用工具數：${toolCount}`,
+                `• 外部 MCP：${mcpSummary}`,
+            ].join("\n"),
+            {
+                statusCard: {
+                    model,
+                    visionModel,
+                    dbConnected,
+                    toolCount,
+                    mcpServers: mcpStatuses.map((s) => ({
+                        name: s.name,
+                        connected: s.connected,
+                        toolCount: s.toolCount,
+                    })),
+                },
+            },
+        );
         return;
     }
 
     case "help": {
-        await ctx.reply([
-            "Nymph 使用指南",
-            "• 直接提問或附圖提問，我會結合社群知識庫與工具協助分析。",
-            "• 貼上 arXiv 論文網址即可自動產生論文速覽。",
-            "• /reset — 清除目前對話脈絡，開啟全新話題。",
-            "• /status — 查看目前模型與外部 MCP 狀態。",
-            "• /help — 顯示此說明。",
-        ].join("\n"));
+        await ctx.reply(
+            [
+                "Nymph 使用指南",
+                "• 直接提問或附圖提問，我會結合社群知識庫與工具協助分析。",
+                "• 貼上 arXiv 論文網址即可自動產生論文速覽。",
+                "• /reset — 清除目前對話脈絡，開啟全新話題。",
+                "• /status — 查看目前模型與外部 MCP 狀態。",
+                "• /help — 顯示此說明。",
+            ].join("\n"),
+            {
+                helpCard: {
+                    baseUrl: Bun.env.BASE_URL || undefined,
+                },
+            },
+        );
         return;
     }
 
