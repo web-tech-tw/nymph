@@ -142,7 +142,7 @@ export class DiscordProvider implements BasePlatformProvider {
                 await this.sendReply(message.channel.id, text, message);
             };
 
-            // Handle built-in slash commands (e.g. /reset, /status, /help)
+            // Handle built-in slash commands (e.g. /help)
             if (cleanContent && imageAttachments.size === 0 && !message.reference?.messageId) {
                 const parsedCmd = parseSlashCommand(cleanContent);
                 if (parsedCmd && this.#commandCallbacks.length > 0) {

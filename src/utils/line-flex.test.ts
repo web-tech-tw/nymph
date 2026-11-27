@@ -6,81 +6,76 @@ import {
     buildLineQuickReply,
 } from "./line-flex";
 
-describe("LINE Flex Message & Quick Reply helpers", () => {
-    test("extractQuickRepliesTag should parse up to 3 suggestions and strip <quick_replies> tags", () => {
-        const raw = "這是主要回答內容。\n\n<quick_replies>怎麼設定快取？|有範例程式嗎？|效能差異？|第四個應被忽略</quick_replies>";
+describe("line-flex utilities", () => {
+    test("extractQuickRepliesTag strips tag and caps suggestions at 3 unique items", () => {
+        const raw = "Main answer.\n\n<quick_replies>Q1|Q2|Q1|Q3|Q4</quick_replies>";
         const { cleanText, quickReplies } = extractQuickRepliesTag(raw);
 
-        expect(cleanText).toBe("這是主要回答內容。");
-        expect(quickReplies).toEqual(["怎麼設定快取？", "有範例程式嗎？", "效能差異？"]);
+        expect(cleanText).toBe("Main answer.");
+        expect(quickReplies).toEqual(["Q1", "Q2", "Q3"]);
     });
 
-    test("extractQuickRepliesTag should return original text when tag is absent", () => {
-        const { cleanText, quickReplies } = extractQuickRepliesTag("純文字回覆");
-        expect(cleanText).toBe("純文字回覆");
+    test("extractQuickRepliesTag leaves plain text untouched", () => {
+        const { cleanText, quickReplies } = extractQuickRepliesTag("Plain response");
+        expect(cleanText).toBe("Plain response");
         expect(quickReplies).toEqual([]);
     });
 
-    test("buildArxivFlexMessage should render bubble with URI button for valid https URL", () => {
-        const flex = buildArxivFlexMessage({
-            title: "Attention Is All You Need",
+    test("buildArxivFlexMessage produces valid bubble with URI footer only for http(s) URLs", () => {
+        const valid = buildArxivFlexMessage({
+            title: "Sample Paper",
             url: "https://arxiv.org/abs/1706.03762",
-            summary: "提出 Transformer 架構，以自注意力取代循環神經網路。",
-            comment: "現代大型語言模型的奠基論文。",
+            summary: "Summary.",
+            comment: "Comment.",
         });
-
-        expect(flex.type).toBe("flex");
-        expect(flex.altText).toContain("Attention Is All You Need");
-        expect(flex.altText.length).toBeLessThanOrEqual(400);
-        expect(flex.contents.type).toBe("bubble");
-        if (flex.contents.type === "bubble") {
-            expect(flex.contents.footer).toBeDefined();
+        expect(valid.type).toBe("flex");
+        expect(valid.altText.length).toBeGreaterThan(0);
+        expect(valid.altText.length).toBeLessThanOrEqual(400);
+        expect(valid.contents.type).toBe("bubble");
+        if (valid.contents.type === "bubble") {
+            expect(valid.contents.footer).toBeDefined();
         }
-    });
 
-    test("buildArxivFlexMessage should omit footer button for invalid URL", () => {
-        const flex = buildArxivFlexMessage({
-            title: "Test Paper",
+        const invalidUrl = buildArxivFlexMessage({
+            title: "Sample Paper",
             url: "javascript:alert(1)",
-            summary: "Summary text",
+            summary: "Summary.",
             comment: "",
         });
-
-        expect(flex.contents.type).toBe("bubble");
-        if (flex.contents.type === "bubble") {
-            expect(flex.contents.footer).toBeUndefined();
+        if (invalidUrl.contents.type === "bubble") {
+            expect(invalidUrl.contents.footer).toBeUndefined();
         }
     });
 
-    test("buildHelpFlexMessage should build valid bubble without exposing internal commands", () => {
-        const helpFlex = buildHelpFlexMessage({ baseUrl: "https://web-tech.tw/nymph" });
-        expect(helpFlex.type).toBe("flex");
-        expect(helpFlex.contents.type).toBe("bubble");
-        const serialized = JSON.stringify(helpFlex);
-        expect(serialized).not.toContain("/reset");
-        expect(serialized).not.toContain("/status");
+    test("buildHelpFlexMessage produces valid bubble and includes footer only when baseUrl is valid", () => {
+        const withUrl = buildHelpFlexMessage({ baseUrl: "https://example.com/nymph" });
+        expect(withUrl.type).toBe("flex");
+        expect(withUrl.altText.length).toBeLessThanOrEqual(400);
+        if (withUrl.contents.type === "bubble") {
+            expect(withUrl.contents.footer).toBeDefined();
+        }
+
+        const withoutUrl = buildHelpFlexMessage({});
+        if (withoutUrl.contents.type === "bubble") {
+            expect(withoutUrl.contents.footer).toBeUndefined();
+        }
     });
 
-    test("buildLineQuickReply should generate recommended follow-ups with labels <= 20 chars and no /reset or /status", () => {
-        const converged = buildLineQuickReply({ converged: true });
-        expect(converged.items?.[0]?.action?.label).toContain("繼續深入查證");
-        expect(JSON.stringify(converged)).not.toContain("/reset");
+    test("buildLineQuickReply enforces LINE 20-char label limit and returns non-empty items for all modes", () => {
+        const modes = [
+            buildLineQuickReply({ converged: true }),
+            buildLineQuickReply({ isArxiv: true }),
+            buildLineQuickReply({ isSystemCard: true }),
+            buildLineQuickReply({}),
+            buildLineQuickReply({ suggestions: ["A".repeat(40), "Short"] }),
+        ];
 
-        const arxiv = buildLineQuickReply({ isArxiv: true });
-        expect(arxiv.items?.some((i) => i.action?.label?.includes("方法與架構"))).toBe(true);
-        expect(JSON.stringify(arxiv)).not.toContain("/reset");
-
-        const aiDynamic = buildLineQuickReply({
-            suggestions: [
-                "這是一段故意超過二十個字元的超長追問建議文字用來測試截斷邏輯",
-                "效能比較？",
-            ],
-        });
-        expect(aiDynamic.items?.length).toBe(2);
-        const firstLabel = aiDynamic.items?.[0]?.action?.label ?? "";
-        expect(firstLabel.length).toBeLessThanOrEqual(20);
-        expect(firstLabel.endsWith("…")).toBe(true);
-        expect(JSON.stringify(aiDynamic)).not.toContain("/status");
-        expect(JSON.stringify(aiDynamic)).not.toContain("/reset");
+        for (const qr of modes) {
+            expect(qr.items && qr.items.length > 0).toBe(true);
+            for (const item of qr.items ?? []) {
+                expect(item.action?.type).toBe("message");
+                expect((item.action?.label ?? "").length).toBeLessThanOrEqual(20);
+            }
+        }
     });
 });

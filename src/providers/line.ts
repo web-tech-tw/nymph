@@ -255,7 +255,7 @@ export class LineProvider implements BasePlatformProvider {
             const senderId = event.source?.userId ?? sourceId;
             const nickname = await this.#resolveDisplayName(event, senderId);
 
-            // Handle built-in slash commands (e.g. /reset, /status, /help)
+            // Handle built-in slash commands (e.g. /help)
             const parsedCmd = parseSlashCommand(content);
             if (parsedCmd && this.#commandCallbacks.length > 0) {
                 const cmdCtx: ChatContext = {
@@ -356,7 +356,7 @@ export class LineProvider implements BasePlatformProvider {
 
     /**
      * Strictly uses LINE's free replyMessage API (never falls back to billed pushMessage).
-     * Automatically renders Flex Message cards (arXiv, /status, /help) and attaches contextual Quick Replies.
+     * Automatically renders Flex Message cards (arXiv, /help) and attaches contextual Quick Replies.
      */
     async sendReplyWithToken(
         replyToken: string,

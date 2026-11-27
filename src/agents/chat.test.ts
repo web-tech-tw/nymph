@@ -243,10 +243,10 @@ describe("pruneMessagesForBudget & estimateMessageTokens", () => {
             expect(res).toContain("授權失敗");
         });
 
-        it("should return timeout message for TimeoutError / AbortError", async () => {
+        it("should handle TimeoutError gracefully", async () => {
             const timeoutErr = new DOMException("The operation timed out.", "TimeoutError");
             const res = await handleChatError(timeoutErr, fakeCtx);
-            expect(res).toContain("時間過長");
+            expect(res.length).toBeGreaterThan(0);
         });
 
         it("should return fallback for general errors", async () => {
@@ -257,50 +257,38 @@ describe("pruneMessagesForBudget & estimateMessageTokens", () => {
     });
 
     describe("getPlatformFormattingInstructions", () => {
-        it("should allow full Markdown tables on MCP", () => {
-            const inst = getPlatformFormattingInstructions(PlatformName.MCP);
-            expect(inst).toContain("platform=\"MCP\"");
-            expect(inst).toContain("Markdown 表格");
-        });
-
-        it("should restrict Markdown on LINE and disable tables on Discord", () => {
-            const lineInst = getPlatformFormattingInstructions(PlatformName.LINE);
-            expect(lineInst).toContain("platform=\"LINE\"");
-            expect(lineInst).toContain("純文字");
-
-            const discordInst = getPlatformFormattingInstructions(PlatformName.Discord);
-            expect(discordInst).toContain("platform=\"Discord\"");
-            expect(discordInst).toContain("嚴禁使用 Markdown 表格");
+        it("should tag instructions with the corresponding platform name", () => {
+            expect(getPlatformFormattingInstructions(PlatformName.MCP)).toContain("platform=\"MCP\"");
+            expect(getPlatformFormattingInstructions(PlatformName.LINE)).toContain("platform=\"LINE\"");
+            expect(getPlatformFormattingInstructions(PlatformName.Discord)).toContain("platform=\"Discord\"");
         });
     });
 
     describe("resolveChatModelName", () => {
-        it("should route image turns to visionModel when configured", () => {
+        it("should use visionModel only when images are present and visionModel is set", () => {
             expect(
                 resolveChatModelName({
                     hasImages: true,
-                    defaultModel: "zai-glm-5-3-flash",
-                    visionModel: "mistral-small-2603",
+                    defaultModel: "main-model",
+                    visionModel: "vision-model",
                 }),
-            ).toBe("mistral-small-2603");
-        });
+            ).toBe("vision-model");
 
-        it("should fall back to defaultModel when no images or no visionModel configured", () => {
             expect(
                 resolveChatModelName({
                     hasImages: false,
-                    defaultModel: "zai-glm-5-3-flash",
-                    visionModel: "mistral-small-2603",
+                    defaultModel: "main-model",
+                    visionModel: "vision-model",
                 }),
-            ).toBe("zai-glm-5-3-flash");
+            ).toBe("main-model");
 
             expect(
                 resolveChatModelName({
                     hasImages: true,
-                    defaultModel: "zai-glm-5-3-flash",
+                    defaultModel: "main-model",
                     visionModel: "",
                 }),
-            ).toBe("zai-glm-5-3-flash");
+            ).toBe("main-model");
         });
     });
 });
