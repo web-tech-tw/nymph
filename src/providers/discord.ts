@@ -5,7 +5,8 @@ import {
     Partials,
     Events,
     PresenceUpdateStatus,
-    ActivityType
+    ActivityType,
+    type Message,
 } from "discord.js";
 import { PlatformName } from "../types/provider";
 import type {
@@ -21,6 +22,54 @@ import { saveReceivedImage } from "../utils/media";
 import { formatReplyBreadcrumb } from "../utils/prompts";
 import { extractArxivUrls, parseArxivReplyCard, type ArxivReplyCard } from "../utils/arxiv";
 import { convertMarkdownTablesToDiscordLists } from "../utils/markdown-table-ast";
+
+const TYPING_REFRESH_INTERVAL_MS = 8_000;
+
+/**
+ * Keeps Discord's typing indicator alive while an async task runs.
+ * Discord automatically expires typing indicators after ~10 seconds.
+ */
+export async function withTypingIndicator<T>(
+    channel: { isSendable?: () => boolean; sendTyping?: () => Promise<unknown> },
+    task: () => Promise<T>,
+    intervalMs = TYPING_REFRESH_INTERVAL_MS,
+): Promise<T> {
+    const canType = typeof channel.sendTyping === "function" &&
+        (typeof channel.isSendable !== "function" || channel.isSendable());
+
+    if (!canType) {
+        return await task();
+    }
+
+    const triggerTyping = () => {
+        channel.sendTyping?.().catch((err) => {
+            console.warn("[DiscordProvider] Failed to send typing indicator:", err);
+        });
+    };
+
+    triggerTyping();
+    const timer = setInterval(triggerTyping, intervalMs);
+
+    try {
+        return await task();
+    } finally {
+        clearInterval(timer);
+    }
+}
+
+/**
+ * Parses a slash-like command string (e.g. "/reset", "/status", "/help").
+ */
+export function parseSlashCommand(text: string): { command: string; args: string[] } | null {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("/")) return null;
+    const parts = trimmed.slice(1).split(/\s+/).filter(Boolean);
+    const first = parts[0];
+    if (!first) return null;
+    const command = first.toLowerCase();
+    if (!["reset", "status", "help"].includes(command)) return null;
+    return { command, args: parts.slice(1) };
+}
 
 export class DiscordProvider implements BasePlatformProvider {
     readonly name: PlatformName = PlatformName.Discord;
@@ -83,79 +132,96 @@ export class DiscordProvider implements BasePlatformProvider {
 
             if (!cleanContent && imageAttachments.size === 0) return;
 
-            if (message.channel.isSendable()) {
-                await message.channel.sendTyping().catch((err) => {
-                    console.warn("[DiscordProvider] Failed to send typing indicator:", err);
-                });
-            }
+            const sender = {
+                id: message.author.id,
+                nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
+                username: message.author.username,
+            };
 
-            // Resolve the replied-to message (reply chain, one level deep)
-            const referenced = message.reference?.messageId
-                ? await message.fetchReference().catch(() => null)
-                : null;
-            let replyTo: ChatContext["replyTo"];
-            if (referenced) {
-                const refAuthor =
-                    referenced.member?.displayName ?? referenced.author.displayName ?? referenced.author.username;
-                // breadcrumb stays with the stored content; full text only lives for this turn
-                cleanContent = `${formatReplyBreadcrumb(refAuthor, referenced.content)}\n${cleanContent}`;
-                if (referenced.author.id !== client.user?.id) {
-                    replyTo = { author: refAuthor, content: referenced.content };
-                }
-            } else if (message.reference?.messageId) {
-                cleanContent = `回覆（原始訊息已不存在）\n${cleanContent}`;
-            }
+            const replyFn = async (text: string) => {
+                await this.sendReply(message.channel.id, text, message);
+            };
 
-            for (const [, attachment] of imageAttachments) {
-                try {
-                    const res = await fetch(attachment.url);
-                    if (res.ok) {
-                        const buffer = await res.arrayBuffer();
-                        const id = await saveReceivedImage(buffer);
-                        const imageCtx: ChatContext = {
-                            platformName: PlatformName.Discord,
-                            roomId: message.channel.id,
-                            sender: {
-                                id: message.author.id,
-                                nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
-                                username: message.author.username,
-                            },
-                            type: "image",
-                            content: id,
-                            reply: async (text: string) => {
-                                await this.sendText(message.channel.id, text);
-                            },
-                        };
-
-                        for (const cb of this.#messageCallbacks) {
-                            try {
-                                await cb(imageCtx);
-                            } catch (error) {
-                                console.error("[DiscordProvider] Error executing image callback:", error);
-                            }
+            // Handle built-in slash commands (e.g. /reset, /status, /help)
+            if (cleanContent && imageAttachments.size === 0 && !message.reference?.messageId) {
+                const parsedCmd = parseSlashCommand(cleanContent);
+                if (parsedCmd && this.#commandCallbacks.length > 0) {
+                    const cmdCtx: ChatContext = {
+                        platformName: PlatformName.Discord,
+                        roomId: message.channel.id,
+                        sender,
+                        type: "text",
+                        content: cleanContent,
+                        reply: replyFn,
+                    };
+                    for (const cb of this.#commandCallbacks) {
+                        try {
+                            await cb(parsedCmd.command, parsedCmd.args, cmdCtx);
+                        } catch (error) {
+                            console.error("[DiscordProvider] Error executing command callback:", error);
                         }
                     }
-                } catch (error) {
-                    console.error("[DiscordProvider] Error processing image attachment:", error);
+                    return;
                 }
             }
 
-            if (cleanContent) {
-                const ctx: ChatContext = {
-                    platformName: PlatformName.Discord,
-                    roomId: message.channel.id,
-                    sender: {
-                        id: message.author.id,
-                        nickname: message.member?.displayName ?? message.author.displayName ?? message.author.username,
-                        username: message.author.username,
-                    },
-                    type: "text",
-                    content: cleanContent,
-                    replyTo,
-                    reply: async (text: string) => {
-                        await this.sendReply(message.channel.id, text);
-                    },
-                };
+            await withTypingIndicator(message.channel, async () => {
+                // Resolve the replied-to message (reply chain, one level deep)
+                const referenced = message.reference?.messageId
+                    ? await message.fetchReference().catch(() => null)
+                    : null;
+                let replyTo: ChatContext["replyTo"];
+                if (referenced) {
+                    const refAuthor =
+                        referenced.member?.displayName ?? referenced.author.displayName ?? referenced.author.username;
+                    // breadcrumb stays with the stored content; full text only lives for this turn
+                    cleanContent = `${formatReplyBreadcrumb(refAuthor, referenced.content)}\n${cleanContent}`;
+                    if (referenced.author.id !== client.user?.id) {
+                        replyTo = { author: refAuthor, content: referenced.content };
+                    }
+                } else if (message.reference?.messageId) {
+                    cleanContent = `回覆（原始訊息已不存在）\n${cleanContent}`;
+                }
+
+                // Download all image attachments first so text + images are sent in a single multimodal turn
+                const savedImageIds: string[] = [];
+                for (const [, attachment] of imageAttachments) {
+                    try {
+                        const res = await fetch(attachment.url);
+                        if (res.ok) {
+                            const buffer = await res.arrayBuffer();
+                            const id = await saveReceivedImage(buffer);
+                            savedImageIds.push(id);
+                        }
+                    } catch (error) {
+                        console.error("[DiscordProvider] Error processing image attachment:", error);
+                    }
+                }
+
+                const firstImageId = savedImageIds[0];
+                if (!cleanContent && !firstImageId) return;
+
+                const ctx: ChatContext = cleanContent
+                    ? {
+                        platformName: PlatformName.Discord,
+                        roomId: message.channel.id,
+                        sender,
+                        type: "text",
+                        content: cleanContent,
+                        images: savedImageIds.length > 0 ? savedImageIds : undefined,
+                        replyTo,
+                        reply: replyFn,
+                    }
+                    : {
+                        platformName: PlatformName.Discord,
+                        roomId: message.channel.id,
+                        sender,
+                        type: "image",
+                        content: firstImageId!,
+                        images: savedImageIds.length > 1 ? savedImageIds.slice(1) : undefined,
+                        replyTo,
+                        reply: replyFn,
+                    };
 
                 for (const cb of this.#messageCallbacks) {
                     try {
@@ -164,7 +230,7 @@ export class DiscordProvider implements BasePlatformProvider {
                         console.error("[DiscordProvider] Error executing message callback:", error);
                     }
                 }
-            }
+            });
         });
 
         this.#client = client;
@@ -186,20 +252,45 @@ export class DiscordProvider implements BasePlatformProvider {
         this.#commandCallbacks.push(cb);
     }
 
+    isReady(): boolean {
+        return Boolean(this.#client?.isReady());
+    }
+
     /**
      * Sends an agent reply: arxiv card blocks render as an embed card,
      * everything else falls back to plain text.
      */
-    async sendReply(roomId: string, content: string): Promise<void> {
+    async sendReply(roomId: string, content: string, replyToMessage?: Message): Promise<void> {
         const card = parseArxivReplyCard(content);
         if (!card) {
-            await this.sendText(roomId, content);
+            await this.sendText(roomId, content, replyToMessage);
             return;
         }
-        await this.sendArxivCard(roomId, card);
+        await this.sendArxivCard(roomId, card, replyToMessage);
     }
 
-    private async sendArxivCard(roomId: string, card: ArxivReplyCard): Promise<void> {
+    private async sendArxivCard(roomId: string, card: ArxivReplyCard, replyToMessage?: Message): Promise<void> {
+        const embed = new EmbedBuilder()
+            .setColor(0xb31b1b)
+            .setTitle(card.title.slice(0, 256))
+            .setURL(card.url || null)
+            .setDescription(card.summary.slice(0, 4096))
+            .addFields({ name: "心得", value: card.comment.slice(0, 1024) || "—" })
+            .setFooter({ text: "arXiv 論文速覽" })
+            .setTimestamp();
+
+        if (replyToMessage) {
+            try {
+                await replyToMessage.reply({
+                    embeds: [embed],
+                    allowedMentions: { repliedUser: false },
+                });
+                return;
+            } catch (err) {
+                console.warn("[DiscordProvider] Failed to reply with arxiv card, falling back to channel.send:", err);
+            }
+        }
+
         const channel = await this.#client?.channels.fetch(roomId).catch((err) => {
             console.error(`[DiscordProvider] Failed to fetch channel ${roomId}:`, err);
             return null;
@@ -210,15 +301,6 @@ export class DiscordProvider implements BasePlatformProvider {
             return;
         }
 
-        const embed = new EmbedBuilder()
-            .setColor(0xb31b1b)
-            .setTitle(card.title.slice(0, 256))
-            .setURL(card.url || null)
-            .setDescription(card.summary.slice(0, 4096))
-            .addFields({ name: "心得", value: card.comment.slice(0, 1024) || "—" })
-            .setFooter({ text: "arXiv 論文速覽" })
-            .setTimestamp();
-
         try {
             await channel.send({ embeds: [embed] });
         } catch (err) {
@@ -226,7 +308,7 @@ export class DiscordProvider implements BasePlatformProvider {
         }
     }
 
-    async sendText(roomId: string, content: string): Promise<void> {
+    async sendText(roomId: string, content: string, replyToMessage?: Message): Promise<void> {
         if (!this.enabled) {
             console.warn("[DiscordProvider] Cannot send text: Provider is disabled");
             return;
@@ -235,6 +317,26 @@ export class DiscordProvider implements BasePlatformProvider {
             console.warn("[DiscordProvider] Cannot send text: Discord client is not initialized");
             return;
         }
+
+        const formattedContent = convertMarkdownTablesToDiscordLists(content);
+        const chunks = sliceContent(formattedContent, 2000);
+        if (chunks.length === 0) return;
+
+        const firstChunk = chunks[0];
+        let startIndex = 0;
+        if (replyToMessage && firstChunk) {
+            try {
+                await replyToMessage.reply({
+                    content: firstChunk,
+                    allowedMentions: { repliedUser: false },
+                });
+                startIndex = 1;
+            } catch (err) {
+                console.warn("[DiscordProvider] Failed to reply to message, falling back to channel.send:", err);
+            }
+        }
+
+        if (startIndex >= chunks.length) return;
 
         const channel = await this.#client.channels.fetch(roomId).catch((err) => {
             console.error(`[DiscordProvider] Failed to fetch channel ${roomId}:`, err);
@@ -249,9 +351,9 @@ export class DiscordProvider implements BasePlatformProvider {
             return;
         }
 
-        const formattedContent = convertMarkdownTablesToDiscordLists(content);
-        const chunks = sliceContent(formattedContent, 2000);
-        for (const chunk of chunks) {
+        for (let i = startIndex; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            if (!chunk) continue;
             try {
                 await channel.send(chunk);
             } catch (err) {

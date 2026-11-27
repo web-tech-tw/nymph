@@ -55,6 +55,27 @@ export const ChatMessageModel: mongoose.Model<IChatMessage> =
     (mongoose.models.ChatMessage as mongoose.Model<IChatMessage>) ||
     mongoose.model<IChatMessage>("ChatMessage", ChatMessageSchema);
 
+export const SESSION_RESET_MARKER = "__SESSION_RESET__";
+
+export async function resetChatSession(sessionId: string): Promise<boolean> {
+    if (!isDatabaseConnected()) {
+        return false;
+    }
+
+    try {
+        await ChatMessageModel.create({
+            sessionId,
+            role: "system",
+            type: "text",
+            content: SESSION_RESET_MARKER,
+        });
+        return true;
+    } catch (error) {
+        console.error("[Database] Failed to reset chat session:", error);
+        return false;
+    }
+}
+
 export async function getHistoryMessages(sessionId: string, limit = 20): Promise<ModelMessage[]> {
     if (!isDatabaseConnected()) {
         return [];
@@ -67,16 +88,27 @@ export async function getHistoryMessages(sessionId: string, limit = 20): Promise
             .lean();
 
         const reversed = docs.reverse();
-        return reversed.map((doc) => {
-            let content = doc.type === "image" ? formatImageMessageTag(doc.content) : doc.content;
-            if (doc.role === "user") {
-                content = formatUserProfileContext(content, doc.sender);
+        let startIndex = 0;
+        for (let i = reversed.length - 1; i >= 0; i--) {
+            if (reversed[i]?.role === "system" && reversed[i]?.content === SESSION_RESET_MARKER) {
+                startIndex = i + 1;
+                break;
             }
-            return {
-                role: doc.role,
-                content,
-            } as ModelMessage;
-        });
+        }
+
+        return reversed
+            .slice(startIndex)
+            .filter((doc) => !(doc.role === "system" && doc.content === SESSION_RESET_MARKER))
+            .map((doc) => {
+                let content = doc.type === "image" ? formatImageMessageTag(doc.content) : doc.content;
+                if (doc.role === "user") {
+                    content = formatUserProfileContext(content, doc.sender);
+                }
+                return {
+                    role: doc.role,
+                    content,
+                } as ModelMessage;
+            });
     } catch (error) {
         console.error("[Database] Failed to get chat history:", error);
         return [];

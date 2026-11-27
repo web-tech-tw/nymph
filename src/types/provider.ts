@@ -50,6 +50,14 @@ export interface ChatContext {
     sender: UserProfile;
     type: MessageContentType;
     content: string;
+    /** Optional additional image IDs attached to the same message (for combined multimodal turns). */
+    images?: string[];
     replyTo?: ReplyToContext;
+    /** Soft deadline (ms from turn start): when exceeded, tools are disabled to force convergence. */
+    softDeadlineMs?: number;
+    /** Hard deadline (ms from turn start): aborts generation if exceeded. */
+    hardDeadlineMs?: number;
+    /** When true, skips loading and persisting chat history (stateless turn). */
+    stateless?: boolean;
     reply(content: string): Promise<void>;
 }

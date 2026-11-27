@@ -161,4 +161,19 @@ describe("search_chat_history tool", () => {
         expect(data.total).toBe(0);
         expect(data.error).toContain("DB connection timeout");
     });
+
+    it("should strictly enforce boundSessionId to prevent cross-room leakage", async () => {
+        let capturedSessionId: string | undefined;
+        const spyFetcher = async (options: { sessionId?: string }) => {
+            capturedSessionId = options.sessionId;
+            return { total: 0, returned: 0, messages: [] };
+        };
+        const tool = toolSearchChatHistory(spyFetcher, "discord:room-only");
+        await (tool.execute as AnyAsyncFn)({
+            query: "secret",
+            sessionId: "discord:other-private-room",
+        });
+
+        expect(capturedSessionId).toBe("discord:room-only");
+    });
 });

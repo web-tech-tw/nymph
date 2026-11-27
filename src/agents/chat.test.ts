@@ -10,6 +10,7 @@ import {
     estimateMessageTokens,
     pruneMessagesForBudget,
     handleChatError,
+    getPlatformFormattingInstructions,
 } from "./chat";
 
 describe("createChatAgent", () => {
@@ -241,10 +242,34 @@ describe("pruneMessagesForBudget & estimateMessageTokens", () => {
             expect(res).toContain("授權失敗");
         });
 
+        it("should return timeout message for TimeoutError / AbortError", async () => {
+            const timeoutErr = new DOMException("The operation timed out.", "TimeoutError");
+            const res = await handleChatError(timeoutErr, fakeCtx);
+            expect(res).toContain("時間過長");
+        });
+
         it("should return fallback for general errors", async () => {
             const err = new Error("Network blip");
             const res = await handleChatError(err, fakeCtx);
             expect(res).toContain("處理訊息時發生錯誤");
+        });
+    });
+
+    describe("getPlatformFormattingInstructions", () => {
+        it("should allow full Markdown tables on MCP", () => {
+            const inst = getPlatformFormattingInstructions(PlatformName.MCP);
+            expect(inst).toContain("platform=\"MCP\"");
+            expect(inst).toContain("Markdown 表格");
+        });
+
+        it("should restrict Markdown on LINE and disable tables on Discord", () => {
+            const lineInst = getPlatformFormattingInstructions(PlatformName.LINE);
+            expect(lineInst).toContain("platform=\"LINE\"");
+            expect(lineInst).toContain("純文字");
+
+            const discordInst = getPlatformFormattingInstructions(PlatformName.Discord);
+            expect(discordInst).toContain("platform=\"Discord\"");
+            expect(discordInst).toContain("嚴禁使用 Markdown 表格");
         });
     });
 });
