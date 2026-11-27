@@ -1,7 +1,7 @@
 import schedule, { type Job } from "node-schedule";
 import { PlatformName } from "../types/provider";
 import type { ChatContext } from "../types/provider";
-import { createChatAgent } from "../agents/chat";
+import { createChatAgent, handleChatError } from "../agents/chat";
 import { snakeToCamelCase } from "../utils/text";
 import type { DiscordProvider } from "../providers/discord";
 
@@ -80,28 +80,44 @@ export async function getScheduledPromptsFromFile(
  */
 const runScheduledPrompt = async (provider: DiscordProvider, config: ScheduledPromptConfig): Promise<void> => {
     console.info(`[Scheduler] Running prompt "${config.name}"`);
-    try {
-        const agent = await createChatAgent();
-        const ctx: ChatContext = {
-            platformName: PlatformName.Discord,
-            roomId: config.channelId,
-            sender: {
-                id: "scheduler",
-                nickname: config.name,
-            },
-            type: "text",
-            content: config.prompt,
-            reply: async (text: string) => {
-                await provider.sendReply(config.channelId, text);
-            },
-        };
+    const sessionId = `${PlatformName.Discord}:${config.channelId}`;
+    const ctx: ChatContext = {
+        platformName: PlatformName.Discord,
+        roomId: config.channelId,
+        sender: {
+            id: "scheduler",
+            nickname: config.name,
+        },
+        type: "text",
+        content: config.prompt,
+        reply: async (text: string) => {
+            await provider.sendReply(config.channelId, text);
+        },
+    };
 
+    try {
+        const agent = await createChatAgent({
+            sessionId,
+            platformName: PlatformName.Discord,
+        });
         const reply = await agent.replyMessage(ctx);
         if (reply) {
             await ctx.reply(reply);
         }
     } catch (error) {
         console.error(`[Scheduler] Failed to run prompt "${config.name}":`, error);
+        const recovered = await handleChatError(error, ctx, async (opts) => {
+            const agent = await createChatAgent({
+                sessionId,
+                platformName: PlatformName.Discord,
+            });
+            return await agent.replyMessage(ctx, opts);
+        });
+        if (recovered && !recovered.startsWith("⚠️")) {
+            await ctx.reply(recovered).catch((sendErr) => {
+                console.error(`[Scheduler] Failed to send recovered reply for "${config.name}":`, sendErr);
+            });
+        }
     }
 };
 
