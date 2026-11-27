@@ -44,6 +44,33 @@ export interface ReplyToContext {
     content: string;
 }
 
+export interface StatusCardData {
+    model: string;
+    visionModel?: string;
+    dbConnected: boolean;
+    toolCount: number;
+    mcpServers: Array<{
+        name: string;
+        connected: boolean;
+        toolCount: number;
+    }>;
+}
+
+export interface HelpCardData {
+    baseUrl?: string;
+}
+
+export interface ReplyMetadata {
+    /** True when the agent disabled tools early due to softDeadlineMs. */
+    converged?: boolean;
+    /** Optional AI-suggested follow-up prompts for quick reply buttons. */
+    quickReplies?: string[];
+    /** Optional structured status payload for rich card rendering (e.g. LINE Flex). */
+    statusCard?: StatusCardData;
+    /** Optional structured help payload for rich card rendering (e.g. LINE Flex). */
+    helpCard?: HelpCardData;
+}
+
 export interface ChatContext {
     platformName: PlatformName;
     roomId: string;
@@ -59,5 +86,5 @@ export interface ChatContext {
     hardDeadlineMs?: number;
     /** When true, skips loading and persisting chat history (stateless turn). */
     stateless?: boolean;
-    reply(content: string): Promise<void>;
+    reply(content: string, metadata?: ReplyMetadata): Promise<void>;
 }

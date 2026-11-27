@@ -100,4 +100,82 @@ describe("LineProvider", () => {
         expect(receivedCmd).toBe("reset");
         expect(replyMessageMock).toHaveBeenCalledTimes(1);
     });
+
+    test("should render Flex Message for arXiv reply and attach arXiv Quick Reply", async () => {
+        let sentPayload: { replyToken: string; messages: Array<Record<string, unknown>> } | null = null;
+        const replyMessageMock = mock(async (req: { replyToken: string; messages: Array<Record<string, unknown>> }) => {
+            sentPayload = req;
+            return {};
+        });
+        const pushMessageMock = mock(async () => ({}));
+
+        const provider = new LineProvider({ token: "test-token", secret: "" });
+        provider.setClient({
+            replyMessage: replyMessageMock,
+            pushMessage: pushMessageMock,
+            showLoadingAnimation: mock(async () => ({})),
+            getProfile: mock(async () => ({ displayName: "Reader" })),
+        } as unknown as Parameters<LineProvider["setClient"]>[0]);
+
+        provider.onMessage(async (ctx) => {
+            await ctx.reply(
+                "<arxiv_reply><title>Demo Paper</title><url>https://arxiv.org/abs/2501.00001</url><summary>A concise summary.</summary><comment>Solid work.</comment></arxiv_reply>",
+            );
+        });
+
+        const payload = JSON.stringify({
+            events: [
+                {
+                    type: "message",
+                    webhookEventId: "evt-arxiv-1",
+                    replyToken: "reply-token-arxiv",
+                    source: { type: "user", userId: "U777" },
+                    message: { type: "text", id: "m3", text: "https://arxiv.org/abs/2501.00001" },
+                },
+            ],
+        });
+
+        await provider.handleWebhookPayload(payload, null, { awaitCompletion: true });
+        expect(replyMessageMock).toHaveBeenCalledTimes(1);
+        expect(pushMessageMock).toHaveBeenCalledTimes(0);
+        expect(sentPayload).not.toBeNull();
+        expect(sentPayload!.messages[0]?.type).toBe("flex");
+        const qr = sentPayload!.messages[0]?.quickReply as { items?: Array<{ action?: { label?: string } }> };
+        expect(qr?.items?.some((i) => i.action?.label?.includes("方法與架構"))).toBe(true);
+    });
+
+    test("should attach continue Quick Reply when replyMetadata.converged is true", async () => {
+        let sentPayload: { replyToken: string; messages: Array<Record<string, unknown>> } | null = null;
+        const replyMessageMock = mock(async (req: { replyToken: string; messages: Array<Record<string, unknown>> }) => {
+            sentPayload = req;
+            return {};
+        });
+
+        const provider = new LineProvider({ token: "test-token", secret: "" });
+        provider.setClient({
+            replyMessage: replyMessageMock,
+            showLoadingAnimation: mock(async () => ({})),
+            getProfile: mock(async () => ({ displayName: "User" })),
+        } as unknown as Parameters<LineProvider["setClient"]>[0]);
+
+        provider.onMessage(async (ctx) => {
+            await ctx.reply("先依目前查到的資訊整理如下。", { converged: true });
+        });
+
+        const payload = JSON.stringify({
+            events: [
+                {
+                    type: "message",
+                    webhookEventId: "evt-conv-1",
+                    replyToken: "reply-token-conv",
+                    source: { type: "user", userId: "U888" },
+                    message: { type: "text", id: "m4", text: "深查問題" },
+                },
+            ],
+        });
+
+        await provider.handleWebhookPayload(payload, null, { awaitCompletion: true });
+        const qr = sentPayload!.messages[0]?.quickReply as { items?: Array<{ action?: { label?: string } }> };
+        expect(qr?.items?.[0]?.action?.label).toContain("繼續深入查證");
+    });
 });

@@ -5,14 +5,21 @@ import type {
     MessageCallback,
     CommandCallback,
     ChatContext,
+    ReplyMetadata,
 } from "../types/provider";
 import type { LineProviderParams, WebhookResult } from "../types/line";
 import { server as defaultServer, type HttpServer } from "../routes";
 import { sliceContent } from "../utils/text";
 import { extractSourceId } from "../utils/line";
 import { saveReceivedImage } from "../utils/media";
-import { flattenArxivReply } from "../utils/arxiv";
+import { parseArxivReplyCard, flattenArxivReply } from "../utils/arxiv";
 import { convertMarkdownTablesToDiscordLists } from "../utils/markdown-table-ast";
+import {
+    buildArxivFlexMessage,
+    buildHelpFlexMessage,
+    buildLineQuickReply,
+    buildStatusFlexMessage,
+} from "../utils/line-flex";
 import { parseSlashCommand } from "./discord";
 
 const MAX_SEEN_EVENT_IDS = 1000;
@@ -218,7 +225,7 @@ export class LineProvider implements BasePlatformProvider {
         const hardDeadlineMs = Number(Bun.env.LINE_HARD_DEADLINE_MS) || DEFAULT_LINE_HARD_DEADLINE_MS;
 
         const showLoading = () => {
-            if (this.#client && event.source?.type === "user" && event.source.userId) {
+            if (this.#client?.showLoadingAnimation && event.source?.type === "user" && event.source.userId) {
                 this.#client.showLoadingAnimation({
                     chatId: sourceId,
                     loadingSeconds: 60,
@@ -228,8 +235,8 @@ export class LineProvider implements BasePlatformProvider {
             }
         };
 
-        const replyFn = async (text: string) => {
-            await this.sendReplyWithToken(replyToken, text);
+        const replyFn = async (text: string, metadata?: ReplyMetadata) => {
+            await this.sendReplyWithToken(replyToken, text, metadata);
         };
 
         switch (event.message.type) {
@@ -350,8 +357,13 @@ export class LineProvider implements BasePlatformProvider {
 
     /**
      * Strictly uses LINE's free replyMessage API (never falls back to billed pushMessage).
+     * Automatically renders Flex Message cards (arXiv, /status, /help) and attaches contextual Quick Replies.
      */
-    async sendReplyWithToken(replyToken: string, content: string): Promise<void> {
+    async sendReplyWithToken(
+        replyToken: string,
+        content: string,
+        metadata?: ReplyMetadata,
+    ): Promise<void> {
         if (!this.enabled) {
             console.warn("[LineProvider] Cannot reply: Provider is disabled");
             return;
@@ -361,14 +373,47 @@ export class LineProvider implements BasePlatformProvider {
             return;
         }
 
-        const formatted = convertMarkdownTablesToDiscordLists(flattenArxivReply(content));
-        const chunks = sliceContent(formatted, 5000).slice(0, LINE_MAX_REPLY_MESSAGES);
-        if (chunks.length === 0) return;
+        const messages: messagingApi.Message[] = [];
+        let isArxiv = false;
+        let isSystemCard = false;
+
+        if (metadata?.statusCard) {
+            isSystemCard = true;
+            messages.push(buildStatusFlexMessage(metadata.statusCard));
+        } else if (metadata?.helpCard) {
+            isSystemCard = true;
+            messages.push(buildHelpFlexMessage(metadata.helpCard));
+        } else {
+            const arxivCard = parseArxivReplyCard(content);
+            if (arxivCard) {
+                isArxiv = true;
+                messages.push(buildArxivFlexMessage(arxivCard));
+            } else {
+                const formatted = convertMarkdownTablesToDiscordLists(flattenArxivReply(content));
+                const chunks = sliceContent(formatted, 5000).slice(0, LINE_MAX_REPLY_MESSAGES);
+                for (const chunk of chunks) {
+                    messages.push({ type: "text", text: chunk });
+                }
+            }
+        }
+
+        if (messages.length === 0) return;
+
+        const quickReply = buildLineQuickReply({
+            converged: metadata?.converged,
+            isArxiv,
+            isSystemCard,
+            suggestions: metadata?.quickReplies,
+        });
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage && quickReply.items && quickReply.items.length > 0) {
+            lastMessage.quickReply = quickReply;
+        }
 
         try {
             await this.#client.replyMessage({
                 replyToken,
-                messages: chunks.map((chunk) => ({ type: "text" as const, text: chunk })),
+                messages,
             });
         } catch (err) {
             console.error("[LineProvider] Failed to send replyMessage (pushMessage fallback disabled):", err);
