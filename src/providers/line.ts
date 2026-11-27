@@ -18,7 +18,6 @@ import {
     buildArxivFlexMessage,
     buildHelpFlexMessage,
     buildLineQuickReply,
-    buildStatusFlexMessage,
 } from "../utils/line-flex";
 import { parseSlashCommand } from "./discord";
 
@@ -377,10 +376,7 @@ export class LineProvider implements BasePlatformProvider {
         let isArxiv = false;
         let isSystemCard = false;
 
-        if (metadata?.statusCard) {
-            isSystemCard = true;
-            messages.push(buildStatusFlexMessage(metadata.statusCard));
-        } else if (metadata?.helpCard) {
+        if (metadata?.helpCard) {
             isSystemCard = true;
             messages.push(buildHelpFlexMessage(metadata.helpCard));
         } else {

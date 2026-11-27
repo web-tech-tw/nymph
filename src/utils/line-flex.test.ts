@@ -2,18 +2,17 @@ import { describe, test, expect } from "bun:test";
 import {
     extractQuickRepliesTag,
     buildArxivFlexMessage,
-    buildStatusFlexMessage,
     buildHelpFlexMessage,
     buildLineQuickReply,
 } from "./line-flex";
 
 describe("LINE Flex Message & Quick Reply helpers", () => {
-    test("extractQuickRepliesTag should parse and strip <quick_replies> tags", () => {
-        const raw = "這是主要回答內容。\n\n<quick_replies>怎麼設定快取？|有範例程式嗎？|第三個應被忽略</quick_replies>";
+    test("extractQuickRepliesTag should parse up to 3 suggestions and strip <quick_replies> tags", () => {
+        const raw = "這是主要回答內容。\n\n<quick_replies>怎麼設定快取？|有範例程式嗎？|效能差異？|第四個應被忽略</quick_replies>";
         const { cleanText, quickReplies } = extractQuickRepliesTag(raw);
 
         expect(cleanText).toBe("這是主要回答內容。");
-        expect(quickReplies).toEqual(["怎麼設定快取？", "有範例程式嗎？"]);
+        expect(quickReplies).toEqual(["怎麼設定快取？", "有範例程式嗎？", "效能差異？"]);
     });
 
     test("extractQuickRepliesTag should return original text when tag is absent", () => {
@@ -53,34 +52,35 @@ describe("LINE Flex Message & Quick Reply helpers", () => {
         }
     });
 
-    test("buildStatusFlexMessage and buildHelpFlexMessage should build valid bubbles", () => {
-        const statusFlex = buildStatusFlexMessage({
-            model: "zai-glm-5-3-flash",
-            visionModel: "mistral-small-2603",
-            dbConnected: true,
-            toolCount: 8,
-            mcpServers: [{ name: "firecrawl", connected: true, toolCount: 3 }],
-        });
-        expect(statusFlex.type).toBe("flex");
-        expect(statusFlex.altText).toContain("zai-glm-5-3-flash");
-
+    test("buildHelpFlexMessage should build valid bubble without exposing internal commands", () => {
         const helpFlex = buildHelpFlexMessage({ baseUrl: "https://web-tech.tw/nymph" });
         expect(helpFlex.type).toBe("flex");
         expect(helpFlex.contents.type).toBe("bubble");
+        const serialized = JSON.stringify(helpFlex);
+        expect(serialized).not.toContain("/reset");
+        expect(serialized).not.toContain("/status");
     });
 
-    test("buildLineQuickReply should generate contextual buttons with labels <= 20 chars", () => {
+    test("buildLineQuickReply should generate recommended follow-ups with labels <= 20 chars and no /reset or /status", () => {
         const converged = buildLineQuickReply({ converged: true });
         expect(converged.items?.[0]?.action?.label).toContain("繼續深入查證");
+        expect(JSON.stringify(converged)).not.toContain("/reset");
 
         const arxiv = buildLineQuickReply({ isArxiv: true });
         expect(arxiv.items?.some((i) => i.action?.label?.includes("方法與架構"))).toBe(true);
+        expect(JSON.stringify(arxiv)).not.toContain("/reset");
 
         const aiDynamic = buildLineQuickReply({
-            suggestions: ["這是一段故意超過二十個字元的超長追問建議文字用來測試截斷邏輯"],
+            suggestions: [
+                "這是一段故意超過二十個字元的超長追問建議文字用來測試截斷邏輯",
+                "效能比較？",
+            ],
         });
+        expect(aiDynamic.items?.length).toBe(2);
         const firstLabel = aiDynamic.items?.[0]?.action?.label ?? "";
         expect(firstLabel.length).toBeLessThanOrEqual(20);
         expect(firstLabel.endsWith("…")).toBe(true);
+        expect(JSON.stringify(aiDynamic)).not.toContain("/status");
+        expect(JSON.stringify(aiDynamic)).not.toContain("/reset");
     });
 });

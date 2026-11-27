@@ -58,7 +58,7 @@ export async function withTypingIndicator<T>(
 }
 
 /**
- * Parses a slash-like command string (e.g. "/reset", "/status", "/help").
+ * Parses a slash-like command string (e.g. "/help").
  */
 export function parseSlashCommand(text: string): { command: string; args: string[] } | null {
     const trimmed = text.trim();
@@ -67,7 +67,7 @@ export function parseSlashCommand(text: string): { command: string; args: string
     const first = parts[0];
     if (!first) return null;
     const command = first.toLowerCase();
-    if (!["reset", "status", "help"].includes(command)) return null;
+    if (command !== "help") return null;
     return { command, args: parts.slice(1) };
 }
 

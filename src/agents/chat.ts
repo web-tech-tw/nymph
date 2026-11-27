@@ -34,7 +34,7 @@ export function getPlatformFormattingInstructions(platformName?: PlatformName): 
             "- 一般交談與說明請使用純文字與自然換行排版（可用「• 」或數字列點），不要使用 **粗體**、# 標題或 | Markdown 表格語法。",
             "- 僅在提供程式碼片段時使用 ```語言 ... ``` 程式碼區塊。",
             "- 回覆保持精簡聚焦，避免過長篇幅。",
-            "- 非 arxiv_reply 卡片回覆時，可在回覆最末端選填附上一行 <quick_replies>簡短追問1|簡短追問2</quick_replies>（最多 2 個、每個 12 字以內，作為使用者下一步按鈕；不需要時可省略）。",
+            "- 非 arxiv_reply 卡片回覆時，請在回覆最末端附上一行 <quick_replies>簡短追問1|簡短追問2|簡短追問3</quick_replies>（提供 2 至 3 個與本輪高度相關的推薦追問，每個 15 字以內，作為使用者的快速回覆按鈕）。",
             "</platform_formatting>",
         ].join("\n");
 
