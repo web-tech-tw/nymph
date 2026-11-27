@@ -48,6 +48,54 @@ export function TokensPage({
                             notificationType: 'success',
                             copiedTokenId: null,
                             visibleSecrets: {},
+                            selectedClientTab: 'antigravity',
+                            selectedSnippetTokenId: '',
+                            copiedSnippet: false,
+
+                            getMcpEndpointUrl() {
+                                const apiBaseUrl = new URL(config.baseUrl || '', window.location.origin);
+                                return new URL('mcp', apiBaseUrl.href.endsWith('/') ? apiBaseUrl : apiBaseUrl.href + '/').href;
+                            },
+
+                            getActiveSnippetToken() {
+                                if (this.selectedSnippetTokenId) {
+                                    const found = this.tokens.find(t => t.id === this.selectedSnippetTokenId);
+                                    if (found) return found.token;
+                                }
+                                return this.tokens.length > 0 ? this.tokens[0].token : '<YOUR_MCP_TOKEN>';
+                            },
+
+                            getClientConfigSnippet() {
+                                const url = this.getMcpEndpointUrl();
+                                const token = this.getActiveSnippetToken();
+                                if (this.selectedClientTab === 'claude') {
+                                    return 'claude mcp add --transport http nymph ' + url + ' --header "Authorization: Bearer ' + token + '"';
+                                }
+                                if (this.selectedClientTab === 'codex') {
+                                    return '[mcp_servers.nymph]\nurl = "' + url + '"\nhttp_headers = { Authorization = "Bearer ' + token + '" }';
+                                }
+                                return JSON.stringify({
+                                    mcpServers: {
+                                        nymph: {
+                                            type: 'http',
+                                            url: url,
+                                            headers: {
+                                                Authorization: 'Bearer ' + token,
+                                            },
+                                        },
+                                    },
+                                }, null, 2);
+                            },
+
+                            async copySnippet() {
+                                try {
+                                    await navigator.clipboard.writeText(this.getClientConfigSnippet());
+                                    this.copiedSnippet = true;
+                                    setTimeout(() => { this.copiedSnippet = false; }, 2000);
+                                } catch (err) {
+                                    this.showNotification('複製失敗', 'error');
+                                }
+                            },
 
                             showNotification(msg, type = 'success') {
                                 this.notification = msg;
@@ -504,9 +552,12 @@ export function TokensPage({
 
                                             {/* Action Buttons */}
                                             <div class="flex justify-between items-center text-xs text-gray-500">
-                                                <div>
+                                                <div class="flex flex-wrap gap-x-3 gap-y-1">
                                                     <template x-if="t.createdAt">
                                                         <span>建立於 <span x-text="new Date(t.createdAt).toLocaleDateString()"></span></span>
+                                                    </template>
+                                                    <template x-if="t.lastUsedAt">
+                                                        <span>最後使用 <span x-text="new Date(t.lastUsedAt).toLocaleString()"></span></span>
                                                     </template>
                                                 </div>
                                                 <div class="flex items-center space-x-2">
@@ -528,6 +579,65 @@ export function TokensPage({
                                             </div>
                                         </div>
                                     </template>
+                                </div>
+                            </div>
+
+                            {/* Quick Setup Snippets */}
+                            <div class="mt-6 overflow-hidden shadow-md rounded bg-white">
+                                <div class="px-6 py-4 border-b border-gray-200 flex flex-wrap justify-between items-center gap-2">
+                                    <div class="font-bold text-slate-800">快速整合設定</div>
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <span class="text-gray-500">套用權杖：</span>
+                                        <select
+                                            x-model="selectedSnippetTokenId"
+                                            class="border border-gray-300 rounded px-2 py-1 text-xs bg-white text-slate-700"
+                                        >
+                                            <option value="">自動選擇最新權杖</option>
+                                            <template x-for="t in tokens" x-bind:key="'opt-' + t.id">
+                                                <option x-bind:value="t.id" x-text="t.label"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="px-6 pt-4 border-b border-gray-100 flex flex-wrap gap-2 text-xs font-medium">
+                                    <button
+                                        type="button"
+                                        x-on:click="selectedClientTab = 'antigravity'"
+                                        x-bind:class="selectedClientTab === 'antigravity' ? 'bg-sky-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                        class="px-3 py-1.5 rounded-t transition"
+                                    >
+                                        Antigravity / Cursor
+                                    </button>
+                                    <button
+                                        type="button"
+                                        x-on:click="selectedClientTab = 'claude'"
+                                        x-bind:class="selectedClientTab === 'claude' ? 'bg-sky-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                        class="px-3 py-1.5 rounded-t transition"
+                                    >
+                                        Claude Code CLI
+                                    </button>
+                                    <button
+                                        type="button"
+                                        x-on:click="selectedClientTab = 'codex'"
+                                        x-bind:class="selectedClientTab === 'codex' ? 'bg-sky-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                        class="px-3 py-1.5 rounded-t transition"
+                                    >
+                                        Codex (TOML)
+                                    </button>
+                                </div>
+                                <div class="p-6 bg-white">
+                                    <div class="relative">
+                                        <pre
+                                            class="bg-slate-900 text-slate-100 p-4 rounded text-xs overflow-x-auto leading-relaxed font-mono"
+                                            x-text="getClientConfigSnippet()"
+                                        ></pre>
+                                        <button
+                                            type="button"
+                                            x-on:click="copySnippet()"
+                                            class="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white px-2.5 py-1 rounded text-xs transition"
+                                            x-text="copiedSnippet ? '已複製！' : '複製設定'"
+                                        ></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

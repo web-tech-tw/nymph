@@ -1,6 +1,6 @@
-import { ToolLoopAgent, APICallError, type ModelMessage } from "ai";
+import { ToolLoopAgent, APICallError, stepCountIs, type ModelMessage } from "ai";
 import type { ChatAgentParams, ChatAgent, ReplyMessageOptions } from "../types/agent";
-import type { ChatContext } from "../types/provider";
+import { PlatformName, type ChatContext } from "../types/provider";
 import { getHistoryMessages, saveChatMessage, type IToolCallRecord } from "../databases/models/message";
 import { formatUserProfileContext, formatReplyToTag } from "../utils/prompts";
 import { readReceivedImage } from "../utils/media";
@@ -9,6 +9,59 @@ import { sanitizeChatReply, estimateTokens } from "../utils/text";
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getActiveToolRegistry } from "./tools";
+
+const CONVERGENCE_SYSTEM_NOTICE =
+    "\n\n<system_notice>回覆時限即將到達，請立即停止呼叫任何工具，直接根據目前掌握的資訊整理出完整、精簡且實用的最終回覆。</system_notice>";
+
+/**
+ * Returns platform-specific formatting instructions appended to base settings.xml.
+ */
+export function getPlatformFormattingInstructions(platformName?: PlatformName): string {
+    switch (platformName) {
+    case PlatformName.MCP:
+        return [
+            "<platform_formatting platform=\"MCP\">",
+            "你正在透過 MCP 回覆開發者的編輯器或 CLI 用戶端，支援完整 GitHub Flavored Markdown。",
+            "- 可依需要自由使用標題、清單、粗體、程式碼區塊與 Markdown 表格，以提供結構清晰、易於掃讀的技術分析。",
+            "</platform_formatting>",
+        ].join("\n");
+
+    case PlatformName.LINE:
+        return [
+            "<platform_formatting platform=\"LINE\">",
+            "CRITICAL PLATFORM RESTRICTION (LINE): LINE 不支援 Markdown 渲染、HTML 或表格。",
+            "- 一般交談與說明請使用純文字與自然換行排版（可用「• 」或數字列點），不要使用 **粗體**、# 標題或 | Markdown 表格語法。",
+            "- 僅在提供程式碼片段時使用 ```語言 ... ``` 程式碼區塊。",
+            "- 回覆保持精簡聚焦，避免過長篇幅。",
+            "</platform_formatting>",
+        ].join("\n");
+
+    case PlatformName.Discord:
+    default:
+        return [
+            "<platform_formatting platform=\"Discord\">",
+            "CRITICAL PLATFORM RESTRICTION (Discord): Discord 不支援 HTML 與 Markdown 表格。",
+            "- 嚴禁使用 Markdown 表格（絕不可使用 | 表格語法），即使使用者要求表格，也請改以乾淨的條列清單（- 或 •）搭配粗體小標呈現。",
+            "- 可適度使用簡潔的清單、粗體重點、連結與標準多行程式碼區塊（```語言 ... ```），避免過度花俏排版。",
+            "</platform_formatting>",
+        ].join("\n");
+    }
+}
+
+let cachedSettingsText: string | null = null;
+let cachedSettingsMtime = -1;
+
+async function loadSettingsInstructions(filePath = "./settings.xml"): Promise<string> {
+    const file = Bun.file(filePath);
+    const mtime = file.lastModified;
+    if (cachedSettingsText !== null && mtime === cachedSettingsMtime) {
+        return cachedSettingsText;
+    }
+    const text = await file.text();
+    cachedSettingsText = text;
+    cachedSettingsMtime = mtime;
+    return text;
+}
 
 /**
  * Estimates token count for a ModelMessage.
@@ -177,27 +230,57 @@ export async function handleChatError(
         return "⚠️ 模型服務暫時繁忙或連線不穩定，請稍後再試。";
     }
 
-    // 4. Default fallback
+    // 4. Timeout / Abort
+    const errorName = err != null && typeof err === "object" && "name" in err
+        ? String((err as { name?: unknown }).name)
+        : "";
+    if (errorName === "TimeoutError" || errorName === "AbortError" || /aborted|timed?\s*out/i.test(message)) {
+        return "⚠️ 思考與查證時間過長，請嘗試簡化問題或分次詢問。";
+    }
+
+    // 5. Default fallback
     return "⚠️ 處理訊息時發生錯誤，請稍後再試。";
 }
 
 export class Chat implements ChatAgent {
     private agent: ToolLoopAgent;
+    private baseInstructions: string;
+    private currentSoftDeadline: number | undefined;
+    private convergenceTriggered = false;
 
     constructor(params: ChatAgentParams) {
         const contextLimit = Number(Bun.env.MODEL_CONTEXT_LIMIT) || 131_072;
         const maxOutput = Number(Bun.env.MODEL_MAX_OUTPUT) || 8_192;
         const safety = Number(Bun.env.MODEL_SAFETY_MARGIN) || 8_192;
         const budget = contextLimit - maxOutput - safety;
+        const maxSteps = params.maxSteps ?? (Number(Bun.env.AGENT_MAX_STEPS) || 10);
+
+        this.baseInstructions = params.instructions;
 
         this.agent = new ToolLoopAgent({
             model: params.model,
             instructions: params.instructions,
             tools: params.toolSet,
             providerOptions: params.providerOptions,
-            prepareStep: async ({ messages }) => {
+            stopWhen: stepCountIs(maxSteps),
+            prepareStep: async ({ messages, stepNumber }) => {
+                const prunedMessages = pruneMessagesForBudget(messages, budget);
+                if (this.currentSoftDeadline !== undefined && Date.now() >= this.currentSoftDeadline) {
+                    if (!this.convergenceTriggered) {
+                        this.convergenceTriggered = true;
+                        console.warn(
+                            `[Chat] Soft deadline reached at step ${stepNumber}; disabling tools to force convergence`,
+                        );
+                    }
+                    return {
+                        messages: prunedMessages,
+                        activeTools: [],
+                        toolChoice: "none",
+                        instructions: `${this.baseInstructions}${CONVERGENCE_SYSTEM_NOTICE}`,
+                    };
+                }
                 return {
-                    messages: pruneMessagesForBudget(messages, budget),
+                    messages: prunedMessages,
                 };
             },
         });
@@ -213,8 +296,9 @@ export class Chat implements ChatAgent {
 
     private async buildMessages(ctx: ChatContext, options?: ReplyMessageOptions): Promise<ModelMessage[]> {
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;
+        const stateless = Boolean(options?.stateless ?? ctx.stateless);
         const historyLimit = options?.aggressivePrune ? 2 : 20;
-        const historyMessages = await getHistoryMessages(sessionId, historyLimit);
+        const historyMessages = stateless ? [] : await getHistoryMessages(sessionId, historyLimit);
 
         let userContent: ModelMessage["content"] = this.buildContext(ctx);
         if (ctx.type === "image") {
@@ -230,8 +314,28 @@ export class Chat implements ChatAgent {
         } else {
             // Deterministic trigger: detected arxiv URLs force the agent to read them via firecrawl
             const arxivUrls = extractArxivUrls(ctx.content);
-            if (arxivUrls.length > 0) {
-                userContent = `${sanitizeArxivPaperTags(this.buildContext(ctx))}\n${formatArxivPaperTag(arxivUrls)}`;
+            const textPayload = arxivUrls.length > 0
+                ? `${sanitizeArxivPaperTags(this.buildContext(ctx))}\n${formatArxivPaperTag(arxivUrls)}`
+                : this.buildContext(ctx);
+
+            if (ctx.images && ctx.images.length > 0) {
+                const imageParts: Array<{ type: "image"; image: Uint8Array }> = [];
+                for (const imageId of ctx.images) {
+                    const bytes = await readReceivedImage(imageId);
+                    if (bytes) {
+                        imageParts.push({ type: "image", image: bytes });
+                    }
+                }
+                if (imageParts.length > 0) {
+                    userContent = [
+                        { type: "text", text: textPayload },
+                        ...imageParts,
+                    ];
+                } else {
+                    userContent = textPayload;
+                }
+            } else {
+                userContent = textPayload;
             }
         }
 
@@ -246,9 +350,25 @@ export class Chat implements ChatAgent {
 
     async replyMessage(ctx: ChatContext, options?: ReplyMessageOptions): Promise<string> {
         const messages = await this.buildMessages(ctx, options);
-        const result = await this.agent.generate({
-            messages,
-        });
+        const softDeadlineMs = options?.softDeadlineMs ?? ctx.softDeadlineMs;
+        const hardDeadlineMs =
+            options?.hardDeadlineMs ??
+            ctx.hardDeadlineMs ??
+            (Number(Bun.env.AGENT_TIMEOUT_MS) || undefined);
+
+        this.currentSoftDeadline = softDeadlineMs ? Date.now() + softDeadlineMs : undefined;
+        this.convergenceTriggered = false;
+
+        let result;
+        try {
+            result = await this.agent.generate({
+                messages,
+                ...(hardDeadlineMs ? { abortSignal: AbortSignal.timeout(hardDeadlineMs) } : {}),
+            });
+        } finally {
+            this.currentSoftDeadline = undefined;
+            this.convergenceTriggered = false;
+        }
 
         // 1. Extract and log tool calls if dispatched
         const sessionId = `${ctx.platformName}:${ctx.roomId}`;
@@ -276,24 +396,40 @@ export class Chat implements ChatAgent {
         // 2. Extract final assistant text reply (using result.text to exclude reasoning parts, and sanitize chat markup)
         const reply = sanitizeChatReply(result.text);
 
-        // 3. Save incoming user message (raw content)
-        await saveChatMessage({
-            sessionId,
-            role: "user",
-            type: ctx.type,
-            content: ctx.content,
-            sender: ctx.sender,
-        });
+        const stateless = Boolean(options?.stateless ?? ctx.stateless);
+        if (!stateless) {
+            // 3. Save any attached images from combined multimodal turns
+            if (ctx.type === "text" && ctx.images && ctx.images.length > 0) {
+                for (const imageId of ctx.images) {
+                    await saveChatMessage({
+                        sessionId,
+                        role: "user",
+                        type: "image",
+                        content: imageId,
+                        sender: ctx.sender,
+                    });
+                }
+            }
 
-        // 5. Save assistant reply along with dispatched toolCalls
-        if (reply) {
+            // 4. Save incoming user message (raw content)
             await saveChatMessage({
                 sessionId,
-                role: "assistant",
-                type: "text",
-                content: reply,
-                toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+                role: "user",
+                type: ctx.type,
+                content: ctx.content,
+                sender: ctx.sender,
             });
+
+            // 5. Save assistant reply along with dispatched toolCalls
+            if (reply) {
+                await saveChatMessage({
+                    sessionId,
+                    role: "assistant",
+                    type: "text",
+                    content: reply,
+                    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+                });
+            }
         }
 
         return reply;
@@ -350,16 +486,23 @@ export function createOpenAICompatibleProvider(options?: OpenAICompatibleProvide
     });
 }
 
+export interface CreateChatAgentOptions {
+    sessionId?: string;
+    platformName?: PlatformName;
+    maxSteps?: number;
+}
+
 /**
  * Creates a new Chat instance initialized with system settings and active tools.
  */
-export async function createChatAgent(): Promise<Chat> {
+export async function createChatAgent(options?: CreateChatAgentOptions): Promise<Chat> {
     const provider = createOpenAICompatibleProvider();
 
-    const settingsFile = Bun.file("./settings.xml");
-    const instructions = await settingsFile.text();
+    const baseInstructions = await loadSettingsInstructions();
+    const platformInstructions = getPlatformFormattingInstructions(options?.platformName);
+    const instructions = `${baseInstructions}\n\n${platformInstructions}`;
 
-    const tools = getActiveToolRegistry();
+    const tools = getActiveToolRegistry(options?.sessionId);
 
     const reasoningEffort = Bun.env.OPENAI_REASONING_EFFORT?.trim();
 
@@ -367,6 +510,8 @@ export async function createChatAgent(): Promise<Chat> {
         model: provider(Bun.env.OPENAI_MODEL || ""),
         instructions,
         toolSet: tools,
+        maxSteps: options?.maxSteps,
+        platformName: options?.platformName,
         providerOptions: reasoningEffort
             ? { "openai-compatible": { reasoningEffort } }
             : undefined,

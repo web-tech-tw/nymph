@@ -147,21 +147,36 @@ export class McpProvider implements BasePlatformProvider {
                     prompt: z
                         .string()
                         .describe("The question, task, or message to consult Nymph with"),
+                    topic: z
+                        .string()
+                        .optional()
+                        .describe(
+                            "Optional topic or project key to isolate conversation memory from other consultations (e.g. 'nymph-arch' or 'auth-debug').",
+                        ),
+                    stateless: z
+                        .boolean()
+                        .optional()
+                        .describe(
+                            "When true, runs a one-off consultation without loading or persisting conversation history.",
+                        ),
                 },
             },
-            async ({ prompt }) => {
+            async ({ prompt, topic, stateless }) => {
                 try {
                     let replyText = "";
+                    const sanitizedTopic = topic?.trim().replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+                    const roomId = sanitizedTopic ? `${userId}:${sanitizedTopic}` : userId;
 
                     const ctx: ChatContext = {
                         platformName: PlatformName.MCP,
-                        roomId: userId,
+                        roomId,
                         sender: {
                             id: userId,
                             nickname: profile.nickname,
                         },
                         type: "text",
                         content: prompt,
+                        stateless: stateless === true,
                         reply: async (text: string) => {
                             replyText = text;
                         },

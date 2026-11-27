@@ -33,9 +33,17 @@ let activeToolRegistry: ToolSet = {};
 
 /**
  * Returns the currently active registry of all tools.
+ * When sessionId is provided, binds searchChatHistory strictly to that session
+ * to prevent cross-room history leakage.
  */
-export function getActiveToolRegistry(): ToolSet {
-    return activeToolRegistry;
+export function getActiveToolRegistry(sessionId?: string): ToolSet {
+    if (!sessionId) {
+        return activeToolRegistry;
+    }
+    return {
+        ...activeToolRegistry,
+        searchChatHistory: toolSearchChatHistory(undefined, sessionId),
+    };
 }
 
 export const defaultTools: ToolSet = {
